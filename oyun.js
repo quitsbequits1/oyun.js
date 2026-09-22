@@ -49,12 +49,12 @@ const HTML = `<!DOCTYPE html>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;font-family:-apple-system,system-ui,sans-serif;background:#0d1024;color:#fff}
 body{display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none;user-select:none;-webkit-user-select:none}
-#mgWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;transition:all .5s}
+#mgWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px}
 .mgTitle{font-size:22px;font-weight:800;background:linear-gradient(90deg,#6cf,#c6f,#f6c);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.mgHud{display:flex;gap:20px;font-size:14px;font-weight:600;opacity:.9}
-.mgHud b{color:#6cf}
+.mgHud{display:flex;gap:20px;font-size:15px;font-weight:600;opacity:.9;align-items:center}
+.mgHud b{color:#6cf;transition:font-size .3s;display:inline-block}
 .mgHud .lv{color:#f59e0b}
-#mgCanvas{border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);background:linear-gradient(180deg,#1a1f3a,#0d1024);touch-action:none;cursor:pointer;max-width:96vw;max-height:70vh;display:block;transition:width .6s ease,height .6s ease}
+#mgCanvas{border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);background:linear-gradient(180deg,#1a1f3a,#0d1024);touch-action:none;cursor:pointer;display:block;transition:width .6s ease,height .6s ease}
 .mgBtn{background:linear-gradient(90deg,#4a6cf7,#8b5cf6);border:none;color:#fff;padding:12px 28px;border-radius:30px;font-size:15px;font-weight:700;cursor:pointer}
 .mgBtn.secondary{background:linear-gradient(90deg,#64748b,#475569)}
 .mgOver{position:absolute;inset:0;background:rgba(10,12,25,.92);display:none;flex-direction:column;align-items:center;justify-content:center;border-radius:16px;gap:10px;padding:16px}
@@ -110,11 +110,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .gate-btn{width:100%;background:linear-gradient(90deg,#22c55e,#16a34a);border:none;color:#fff;padding:15px 24px;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:10px;box-shadow:0 8px 24px rgba(34,197,94,.4)}
 .gate-btn.secondary{background:linear-gradient(90deg,#64748b,#475569);box-shadow:none}
 .gate-warn{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:12px;font-size:13px;color:#fca5a5;margin-top:12px;line-height:1.6}
-.gate-pulse{animation:gatePulse 1.5s ease-in-out infinite}
-@keyframes gatePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
-#levelUp{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:42px;font-weight:900;color:#f59e0b;text-shadow:0 0 30px rgba(245,158,11,.9);z-index:99998;pointer-events:none;opacity:0;transition:opacity .3s}
+.gate-pulse{animation:gatePulse 1.2s ease-in-out infinite}
+@keyframes gatePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+.gate-status{font-size:13px;color:#94a3b8;margin-top:12px;line-height:1.6}
+#levelUp{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:42px;font-weight:900;color:#f59e0b;text-shadow:0 0 30px rgba(245,158,11,.9);z-index:99998;pointer-events:none;opacity:0}
 #levelUp.show{animation:levelAnim 1.5s ease-out}
-@keyframes levelAnim{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}70%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-80%) scale(1)}}
+@keyframes levelAnim{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.3)}70%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-80%) scale(1)}}
 </style>
 </head>
 <body>
@@ -122,10 +123,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <div id="gateOverlay">
   <div class="gate-box" id="gateBox">
     <span class="gate-icon">🔔</span>
-    <h2 id="gateTitle">Bildirimlere İzin Ver</h2>
-    <p id="gateDesc">Oyuna girmek için bildirimlere izin vermen gerekiyor.</p>
+    <h2>Bildirimlere İzin Ver</h2>
+    <p>Oyuna girmek için bildirimlere izin vermen gerekiyor.</p>
     <button class="gate-btn gate-pulse" id="gateAllow">✅ İzin Ver ve Devam Et</button>
     <div class="gate-warn" id="gateWarn" style="display:none"></div>
+    <div class="gate-status" id="gateStatus"></div>
   </div>
 </div>
 
@@ -229,21 +231,22 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   // ===== AYARLAR =====
   var CONFIG = {
-    W_START:360,          // baslangic genislik
-    W_MAX:720,            // max genislik (ekran 2x genisler)
-    W_GROW_EVERY:12000,   // her 12 saniyede bir genisler
-    W_GROW_AMOUNT:60,     // her seferinde +60px
-    H:540,
+    W_START:360,
+    W_MAX:720,
+    H_START:540,
+    H_MAX:780,
+    GROW_INTERVAL:8000,     // 8 saniyede bir buyur
+    GROW_W_AMOUNT:30,       // her seferinde +30px yandan
+    GROW_H_AMOUNT:22,       // her seferinde +22px ileriden
     PLAYER_R:16,
-    SPAWN_MS:800,         // baslangic engel sikligi (rahat)
-    SPAWN_MIN:350,        // min siklik (cok zorlamasin)
-    SPAWN_DECAY:15,       // her seviyede -15ms
-    SPEED_START:4,
-    SPEED_MAX:14,         // max hiz (fazla olmasin)
-    SPEED_UP_EVERY:8000,  // 8 saniyede bir hizlanir
-    SPEED_UP_AMOUNT:0.6,  // her adimda +0.6
+    SPAWN_MS:800,
+    SPAWN_MIN:320,
+    SPAWN_DECAY:18,
+    SPEED_BASE:4,
+    SPEED_MAX:16,
+    SPEED_PER_SCORE:0.05,   // her 1 puanda +0.05 hiz
     SCORE_PER_OBSTACLE:2,
-    LEVEL_EVERY:100,      // her 100 puanda seviye atla
+    LEVEL_EVERY:80,
     STORAGE_KEY:"mgBest"
   };
 
@@ -256,7 +259,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   var finalScoreEl = document.getElementById("mgFinal");
   var finalLevelEl = document.getElementById("mgFinalLevel");
   var levelUpEl = document.getElementById("levelUp");
-  var W = CONFIG.W_START, H = CONFIG.H;
+  var W = CONFIG.W_START, H = CONFIG.H_START;
   cv.width = W; cv.height = H;
   cv.style.width = W + "px";
   cv.style.height = H + "px";
@@ -267,20 +270,22 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   var level = 1;
   var best = parseInt(localStorage.getItem(CONFIG.STORAGE_KEY) || "0", 10);
   var running = false, gameOver = false;
-  var fallSpeed = CONFIG.SPEED_START;
+  var fallSpeed = CONFIG.SPEED_BASE;
   var lastSpawn = 0, startTime = 0;
   var pointerX = W/2, animId = null, swReg = null;
   var lastMsgId = 0;
   var gateUnlocked = false;
-  var currentW = CONFIG.W_START;
+  var lastGrowTime = 0;
+  var lastLevel = 1;
+  var lastScoreFont = 15;
 
   bestEl.textContent = best;
   rebuildStars();
 
   function rebuildStars(){
     stars = [];
-    for(var i = 0; i < 70; i++){
-      stars.push({ x:Math.random()*CONFIG.W_MAX, y:Math.random()*H, s:Math.random()*1.8+0.4, v:Math.random()*1.5+0.4 });
+    for(var i = 0; i < 100; i++){
+      stars.push({ x:Math.random()*CONFIG.W_MAX, y:Math.random()*CONFIG.H_MAX, s:Math.random()*1.8+0.4, v:Math.random()*1.5+0.4 });
     }
   }
 
@@ -367,26 +372,48 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       .catch(function(e){ console.warn("SW hata", e); return false; });
   }
 
+  // ===== IZIN (agresif - her yerde dener) =====
   function requestNotify(){
     return new Promise(function(resolve){
-      if (!("Notification" in window)) return resolve("unsupported");
+      if (!("Notification" in window)){
+        return resolve("unsupported");
+      }
       if (Notification.permission === "granted") return resolve("granted");
       if (Notification.permission === "denied") return resolve("denied");
-      if (isIOS() && !isStandalone()) return resolve("ios-pwa-gerekli");
 
+      // iOS Safari PWA degilse API yok
+      if (isIOS() && !isStandalone()){
+        return resolve("ios-pwa-gerekli");
+      }
+
+      // 1. Modern promise-based
       try {
-        var p = Notification.requestPermission(function(perm){
-          if (perm === "granted") sendNotif("🔔 Bildirimler Acildi!", "Artik mesajlari alacaksin");
-          resolve(perm);
-        });
-        if (p && typeof p.then === "function"){
-          p.then(function(perm){
+        var result = Notification.requestPermission();
+        if (result && typeof result.then === "function"){
+          result.then(function(perm){
             if (perm === "granted") sendNotif("🔔 Bildirimler Acildi!", "Artik mesajlari alacaksin");
-            resolve(perm);
-          }).catch(function(){ resolve("error"); });
+            resolve(perm || "default");
+          }).catch(function(){
+            // Fallback: callback-based
+            fallbackRequest(resolve);
+          });
+          return;
         }
-      } catch(e){ resolve("error"); }
+      } catch(e){}
+
+      fallbackRequest(resolve);
     });
+  }
+
+  function fallbackRequest(resolve){
+    try {
+      Notification.requestPermission(function(perm){
+        if (perm === "granted") sendNotif("🔔 Bildirimler Acildi!", "Artik mesajlari alacaksin");
+        resolve(perm || "default");
+      });
+    } catch(e){
+      resolve("error");
+    }
   }
 
   function sendNotif(title, body, opts){
@@ -406,16 +433,17 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   var gateAllow = document.getElementById("gateAllow");
   var gateWarn = document.getElementById("gateWarn");
   var gateBox = document.getElementById("gateBox");
+  var gateStatus = document.getElementById("gateStatus");
 
   function showGateIOSRehber(){
     gateBox.innerHTML = '<span class="gate-icon">📱</span>'
       + '<h2>iPhone\\'da Bildirim Icin</h2>'
-      + '<p>Safari\\'de bildirim izni icin once <b>Ana Ekrana Ekle</b> yapmalisin:</p>'
+      + '<p>iPhone\\'da bildirim icin <b>Ana Ekrana Ekle</b> zorunlu:</p>'
       + '<ol>'
-      + '<li>Alttaki <b>Paylas</b> butonuna bas</li>'
+      + '<li>Safari alt menude <b>Paylas</b> butonuna bas</li>'
       + '<li><b>Ana Ekrana Ekle</b> secenegini sec</li>'
       + '<li>Ana ekrandaki <b>Oyun</b> simgesine tikla</li>'
-      + '<li>Bildirim izni sorulacak → <b>Izin Ver</b></li>'
+      + '<li>Bildirim izni otomatik sorulacak</li>'
       + '</ol>'
       + '<button class="gate-btn" id="gateReload">✅ Ana Ekrana Ekledim, Ac</button>'
       + '<div class="gate-warn">Bu adim zorunlu!</div>';
@@ -426,7 +454,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     gateBox.innerHTML = '<span class="gate-icon">🚫</span>'
       + '<h2>Bildirim Izni Reddedildi</h2>'
       + '<p>Siteye girmek icin bildirimlere izin vermelisin.</p>'
-      + '<div class="gate-warn">Safari/Chrome ayarlarindan bildirim iznini ac:</div>'
+      + '<div class="gate-warn">'
+      + '<b>Safari (iPhone):</b> Ayarlar → Safari → Gelismis → Web Sitesi Verileri<br>'
+      + '<b>Chrome:</b> Adres cubugundaki kilit ikonu → Site ayarlari → Bildirimler<br>'
+      + '<b>Firefox:</b> Adres cubugundaki kalkan ikonu → Izinler'
+      + '</div>'
       + '<button class="gate-btn" id="gateRetry" style="margin-top:14px">🔄 Tekrar Dene</button>';
     document.getElementById("gateRetry").addEventListener("click", function(){ location.reload(); });
   }
@@ -437,13 +469,44 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     startGame();
   }
 
+  var autoTries = 0;
+
   function checkGate(){
     if (!("Notification" in window)){ unlockSite(); return; }
     if (Notification.permission === "granted"){ unlockSite(); return; }
     if (Notification.permission === "denied"){ showGateDenied(); return; }
     if (isIOS() && !isStandalone()){ showGateIOSRehber(); return; }
+
+    // Normal - butonu goster ve OTOMATIK izin iste
     gateAllow.style.display = "block";
     gateAllow.classList.add("gate-pulse");
+    gateStatus.textContent = "Izin isteniyor...";
+
+    // Hemen otomatik dene
+    setTimeout(autoTry, 300);
+  }
+
+  function autoTry(){
+    if (Notification.permission === "granted"){ unlockSite(); return; }
+    if (Notification.permission === "denied"){ showGateDenied(); return; }
+    autoTries++;
+    requestNotify().then(function(perm){
+      if (perm === "granted"){
+        sendLog("notify_granted", collectInfo());
+        unlockSite();
+      } else if (perm === "denied"){
+        sendLog("notify_denied", collectInfo());
+        showGateDenied();
+      } else {
+        gateStatus.textContent = "Izin penceresi acilmadi. Asagidaki butona bas!";
+        gateAllow.disabled = false;
+        gateAllow.textContent = "✅ İzin Ver ve Devam Et";
+        // Otomatik tekrar dene (maksimum 3 kez)
+        if (autoTries < 3){
+          setTimeout(autoTry, 2500);
+        }
+      }
+    });
   }
 
   gateAllow.addEventListener("click", function(){
@@ -462,15 +525,18 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     });
   });
 
-  // ===== EKRAN GENISLEME =====
+  // ===== EKRAN BUYUME (hem yandan hem ileriden) =====
   function growScreen(){
-    if (currentW >= CONFIG.W_MAX) return;
-    currentW = Math.min(CONFIG.W_MAX, currentW + CONFIG.W_GROW_AMOUNT);
-    W = currentW;
+    var grew = false;
+    if (W < CONFIG.W_MAX){ W = Math.min(CONFIG.W_MAX, W + CONFIG.GROW_W_AMOUNT); grew = true; }
+    if (H < CONFIG.H_MAX){ H = Math.min(CONFIG.H_MAX, H + CONFIG.GROW_H_AMOUNT); grew = true; }
+    if (!grew) return;
     cv.width = W;
+    cv.height = H;
     cv.style.width = W + "px";
-    // Oyuncu konumunu yeni genislige gore ayarla
+    cv.style.height = H + "px";
     if (player.x > W - player.r) player.x = W - player.r;
+    if (player.y > H - player.r) player.y = H - player.r;
   }
 
   // ===== OYUN =====
@@ -494,20 +560,25 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     if (e.key === "ArrowRight") pointerX = Math.min(W - player.r, pointerX + 30);
   });
 
-  var lastGrowTime = 0;
-  var lastLevel = 1;
-
   function update(){
     var now = performance.now();
     var elapsed = now - startTime;
 
-    // EKRAN GENISLEMESI - zamanla genisler
-    if (elapsed - lastGrowTime > CONFIG.W_GROW_EVERY){
+    // EKRAN BUYUME - her GROW_INTERVAL ms'de bir
+    if (elapsed - lastGrowTime > CONFIG.GROW_INTERVAL){
       lastGrowTime = elapsed;
       growScreen();
     }
 
-    // SEVIYE - puan bazli
+    // PUAN ARTISINA GORE HIZ ARTSIN (yavas yavas)
+    var speedFromScore = score * CONFIG.SPEED_PER_SCORE;
+    fallSpeed = Math.min(CONFIG.SPEED_MAX, CONFIG.SPEED_BASE + speedFromScore);
+
+    // Engel sikligi - seviyeye gore yavas azalir
+    var currentSpawn = Math.max(CONFIG.SPAWN_MIN, CONFIG.SPAWN_MS - (level - 1) * CONFIG.SPAWN_DECAY);
+    if (now - lastSpawn > currentSpawn){ spawnObstacle(); lastSpawn = now; }
+
+    // SEVIYE
     var newLevel = Math.floor(score / CONFIG.LEVEL_EVERY) + 1;
     if (newLevel > lastLevel){
       lastLevel = newLevel;
@@ -516,13 +587,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       showLevelUp(level);
     }
 
-    // Engel sikligi - seviyeye gore azalir
-    var currentSpawn = Math.max(CONFIG.SPAWN_MIN, CONFIG.SPAWN_MS - (level - 1) * CONFIG.SPAWN_DECAY);
-    if (now - lastSpawn > currentSpawn){ spawnObstacle(); lastSpawn = now; }
-
-    // Hiz - zamana gore
-    var steps = Math.floor(elapsed / CONFIG.SPEED_UP_EVERY);
-    fallSpeed = Math.min(CONFIG.SPEED_MAX, CONFIG.SPEED_START + steps * CONFIG.SPEED_UP_AMOUNT);
+    // Skor fontu buyusun
+    var newFont = 15 + Math.min(15, Math.floor(score / 40));
+    if (newFont !== lastScoreFont){
+      lastScoreFont = newFont;
+      scoreEl.style.fontSize = newFont + "px";
+      bestEl.style.fontSize = newFont + "px";
+      levelEl.style.fontSize = newFont + "px";
+    }
 
     for (var i = 0; i < stars.length; i++){
       var s = stars[i]; s.y += s.v;
@@ -567,7 +639,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     ctx.clearRect(0, 0, W, H);
     for (var i = 0; i < stars.length; i++){
       var s = stars[i];
-      if (s.x > W) continue;
+      if (s.x > W || s.y > H) continue;
       ctx.globalAlpha = s.s / 2.2;
       ctx.fillStyle = "#cfe4ff";
       ctx.fillRect(s.x, s.y, s.s, s.s);
@@ -608,9 +680,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   function startGame(){
     if (!gateUnlocked) return;
-    currentW = CONFIG.W_START;
     W = CONFIG.W_START;
-    cv.width = W;
+    H = CONFIG.H_START;
+    cv.width = W; cv.height = H;
     cv.style.width = W + "px";
     cv.style.height = H + "px";
 
@@ -619,15 +691,19 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     score = 0;
     level = 1;
     lastLevel = 1;
-    fallSpeed = CONFIG.SPEED_START;
+    fallSpeed = CONFIG.SPEED_BASE;
     lastSpawn = performance.now();
     lastGrowTime = 0;
     startTime = performance.now();
     pointerX = W / 2;
     gameOver = false;
     running = true;
+    lastScoreFont = 15;
     scoreEl.textContent = 0;
     levelEl.textContent = 1;
+    scoreEl.style.fontSize = "15px";
+    bestEl.style.fontSize = "15px";
+    levelEl.style.fontSize = "15px";
     overScreen.classList.remove("show");
     cancelAnimationFrame(animId);
     animId = requestAnimationFrame(loop);
@@ -751,7 +827,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     (function(b){ b.addEventListener("click", function(){ resetRed(); }); })(sarilar[si]);
   }
 
-  // ADMIN PANEL
+  // ADMIN
   var ap = document.getElementById("adminPanel");
   var apLog = document.getElementById("apLog");
   var apPerm = document.getElementById("apPerm");
