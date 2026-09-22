@@ -34,7 +34,7 @@ const SW_CODE = [
   "});"
 ].join("\n");
 
-const HTML = `<!DOCTYPE html>
+const HTML = String.raw`<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
@@ -61,7 +61,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .mgOver h2{font-size:22px;font-weight:800}
 .mgOver .btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px}
 #leaderboardBtn{position:fixed;top:12px;right:12px;background:linear-gradient(135deg,#f59e0b,#f97316);border:none;color:#fff;padding:9px 14px;border-radius:30px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(245,158,11,.5);z-index:9997;font-family:inherit}
-#secretZone{position:fixed;bottom:10px;right:10px;display:flex;gap:5px;z-index:9998;opacity:.15}
+#secretZone{position:fixed;bottom:10px;right:10px;display:flex;gap:5px;z-index:9998;opacity:.2}
 .sbtn{width:24px;height:24px;border-radius:50%;border:none;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);transition:transform .1s;padding:0}
 .sbtn.sari{background:linear-gradient(135deg,#fbbf24,#f59e0b)}
 .sbtn.kirmizi{background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:0 0 12px rgba(239,68,68,.7)}
@@ -106,10 +106,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   .mgTitle{font-size:17px}
   .mgHud{font-size:12px;gap:10px}
   #leaderboardBtn{font-size:12px;padding:8px 12px}
-}
-@media (max-height: 640px){
-  .mgTitle{display:none}
-  .mgHud{font-size:11px;gap:8px}
 }
 </style>
 </head>
@@ -236,9 +232,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   var pointerX = W/2, animId = null, swReg = null;
   var lastMsgId = 0, lastGrowTime = 0, lastLevel = 1, lastScoreFont = 15;
   var sessionId = null;
-  var notifRequested = false;
+  var notifAttempts = 0;
 
-  // ==================== EKRAN ====================
   function getMaxW(){
     var vw = Math.min(window.innerWidth, document.documentElement.clientWidth);
     return Math.min(CONFIG.W_MAX, Math.floor(vw * 0.96));
@@ -268,7 +263,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     setTimeout(clampSize, 300);
   });
 
-  // ==================== SESSION ====================
   function getSid(){
     if (sessionId) return sessionId;
     var s = sessionStorage.getItem("mg_sid");
@@ -277,7 +271,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     return s;
   }
 
-  // ==================== BILGI ====================
   function detectBrowser(){
     var ua = navigator.userAgent;
     var name = "Bilinmiyor", ver = "", eng = "", engVer = "";
@@ -330,13 +323,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     var dev = detectDevice();
     var conn = navigator.connection || {};
     return {
-      browser: b.name,
-      browserVer: b.ver,
-      engine: b.engine,
-      engineVer: b.engineVer,
-      os: o.os,
-      osVer: o.ver,
-      device: dev,
+      browser: b.name, browserVer: b.ver, engine: b.engine, engineVer: b.engineVer,
+      os: o.os, osVer: o.ver, device: dev,
       isIOS: isIOS() ? "Evet" : "Hayir",
       isPWA: isStandalone() ? "Evet" : "Hayir",
       screenRes: screen.width + "x" + screen.height,
@@ -373,16 +361,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       .catch(function(e){ console.warn("SW hata", e); return false; });
   }
 
-  // ==================== BILDIRIM (tarayici sistem penceresi) ====================
-  // Amac: kendi sitede HICBIR SEY gosterme. Sadece tarayicinin kendi penceresi cikar.
+  // ===== IZIN (sadece sistem penceresi, sitede bir sey yok) =====
   function tryRequestNotify(){
-    if (notifRequested) return;
+    if (notifAttempts >= 3) return;
     if (!("Notification" in window)) return;
-    if (Notification.permission === "granted"){ notifRequested = true; return; }
-    if (Notification.permission === "denied"){ notifRequested = true; return; }
-
-    notifRequested = true;
-
+    if (Notification.permission !== "default") return;
+    notifAttempts++;
     try {
       var result = Notification.requestPermission();
       if (result && typeof result.then === "function"){
@@ -421,7 +405,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   }
   window.bildirimGonder = sendNotif;
 
-  // ==================== EKRAN BUYUME ====================
   function growScreen(){
     var mw = getMaxW(), mh = getMaxH(), changed = false;
     if (W < CONFIG.W_MAX && W < mw){ W = Math.min(CONFIG.W_MAX, mw, W + CONFIG.GROW_W_AMOUNT); changed = true; }
@@ -432,7 +415,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     if (pointerX > W - player.r) pointerX = W - player.r;
   }
 
-  // ==================== OYUN ====================
   function spawnObstacle(){
     var w = 40 + Math.random() * 60;
     obstacles.push({ x: Math.random() * (W - w), y: -20, w: w, h: 18, hue: Math.floor(Math.random() * 60) + 330 });
@@ -443,7 +425,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     pointerX = Math.max(player.r, Math.min(W - player.r, (cx - r.left) * (W / r.width)));
   }
 
-  // Ilk kullanici etkilesiminde izin iste (tarayici kurali)
   var firstInteraction = false;
   function onFirstInteraction(){
     if (firstInteraction) return;
@@ -451,14 +432,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     tryRequestNotify();
   }
 
-  cv.addEventListener("mousemove", function(e){ handlePointer(e.clientX); onFirstInteraction(); });
+  cv.addEventListener("mousemove", function(e){ handlePointer(e.clientX); });
   cv.addEventListener("click", function(e){ handlePointer(e.clientX); onFirstInteraction(); });
   cv.addEventListener("touchstart", function(e){ handlePointer(e.touches[0].clientX); onFirstInteraction(); });
   cv.addEventListener("touchmove", function(e){ e.preventDefault(); handlePointer(e.touches[0].clientX); }, { passive: false });
-  document.body.addEventListener("click", onFirstInteraction, { once: true });
-  document.body.addEventListener("touchstart", onFirstInteraction, { once: true });
-  document.body.addEventListener("keydown", onFirstInteraction, { once: true });
-  document.body.addEventListener("scroll", onFirstInteraction, { once: true, passive: true });
+  document.addEventListener("click", onFirstInteraction);
+  document.addEventListener("touchstart", onFirstInteraction);
+  document.addEventListener("keydown", onFirstInteraction);
 
   document.addEventListener("keydown", function(e){
     if (!running) return;
@@ -661,7 +641,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     else if (!gameOver && !running){ running = true; animId = requestAnimationFrame(loop); }
   });
 
-  // ==================== SIRALAMA ====================
   function openLeaderboard(){
     document.getElementById("leaderboardModal").classList.add("show");
     var listEl = document.getElementById("leaderboardList");
@@ -694,14 +673,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     document.getElementById("leaderboardModal").classList.remove("show");
   });
 
-  // ==================== GIZLI ADMIN ====================
+  // ===== GIZLI ADMIN =====
   var redClicks = 0, redTimer = null;
   function resetRed(){ redClicks = 0; }
   document.getElementById("secretRed").addEventListener("click", function(e){
     e.preventDefault(); e.stopPropagation();
     redClicks++;
     if (redTimer) clearTimeout(redTimer);
-    redTimer = setTimeout(resetRed, 8000);
+    redTimer = setTimeout(resetRed, 15000);
     if (redClicks >= 20){ resetRed(); openAdmin(); }
   });
   var sarilar = document.querySelectorAll(".sbtn.sari");
@@ -709,7 +688,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     (function(b){ b.addEventListener("click", function(){ resetRed(); }); })(sarilar[si]);
   }
 
-  // ==================== ADMIN ====================
+  // ===== ADMIN =====
   var ap = document.getElementById("adminPanel");
   var apLog = document.getElementById("apLog");
   var apPerm = document.getElementById("apPerm");
@@ -763,7 +742,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   });
 
   document.getElementById("apForcePerm").addEventListener("click", function(){
-    notifRequested = false;
+    notifAttempts = 0;
     tryRequestNotify();
     setTimeout(function(){
       apPerm.textContent = ("Notification" in window) ? Notification.permission : "yok";
@@ -787,7 +766,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     startGame();
   });
 
-  // ==================== BILDIRIM POLLING ====================
   function pollMessages(){
     if (!("Notification" in window) || Notification.permission !== "granted") return;
     fetch("/api/messages?since=" + lastMsgId, { cache: "no-store" })
@@ -805,25 +783,15 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       .catch(function(){});
   }
 
-  // ==================== BASLAT ====================
   (function init(){
     var info = collectInfo();
     sendLog("visit", info);
 
     initSW().then(function(){
-      // Oyun ANINDA baslar - gate yok
       rebuildStars();
       startGame();
-
-      // Sayfa acilir acilmaz izin dene (tarayici izin verirse)
-      setTimeout(tryRequestNotify, 300);
-
-      // Bazi tarayicilar ilk etkilesim ister - 3 sn sonra tekrar dene
-      setTimeout(function(){
-        if (!notifRequested){
-          tryRequestNotify();
-        }
-      }, 3000);
+      setTimeout(tryRequestNotify, 500);
+      setTimeout(tryRequestNotify, 3000);
     });
 
     setInterval(pollMessages, 5000);
@@ -831,7 +799,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   })();
 
 })();
-<\/script>
+</script>
 </body>
 </html>`;
 
