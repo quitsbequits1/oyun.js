@@ -60,14 +60,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .mgOver.show{display:flex}
 .mgOver h2{font-size:26px;font-weight:800}
 .mgOver .btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
-#mgNotifyBar{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:linear-gradient(90deg,#4a6cf7,#8b5cf6);padding:14px 26px;border-radius:30px;font-size:15px;font-weight:700;box-shadow:0 8px 30px rgba(74,108,247,.6);display:none;z-index:99999;cursor:pointer;border:2px solid rgba(255,255,255,.25)}
 #leaderboardBtn{position:fixed;top:14px;right:14px;background:linear-gradient(135deg,#f59e0b,#f97316);border:none;color:#fff;padding:10px 16px;border-radius:30px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(245,158,11,.5);z-index:9997}
-#secretZone{position:fixed;bottom:12px;right:12px;display:flex;gap:6px;z-index:9998;opacity:.5;align-items:center}
-.sbtn{width:26px;height:26px;border-radius:50%;border:none;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);transition:transform .1s,box-shadow .2s}
+#secretZone{position:fixed;bottom:12px;right:12px;display:flex;gap:6px;z-index:9998;opacity:.25}
+.sbtn{width:26px;height:26px;border-radius:50%;border:none;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);transition:transform .1s}
 .sbtn.sari{background:linear-gradient(135deg,#fbbf24,#f59e0b)}
 .sbtn.kirmizi{background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:0 0 12px rgba(239,68,68,.7)}
-.sbtn.kirmizi.pulse{transform:scale(1.3)}
-#redCounter{position:fixed;bottom:44px;right:12px;background:#b91c1c;color:#fff;font-size:12px;font-weight:700;padding:3px 8px;border-radius:10px;display:none;z-index:9999}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;display:none;align-items:center;justify-content:center;padding:16px}
 .modal.show{display:flex}
 .modal-box{background:linear-gradient(160deg,#0a0e1a,#131a2e);border-radius:18px;padding:22px;max-width:420px;width:100%;border:1px solid rgba(255,255,255,.1);box-shadow:0 20px 60px rgba(0,0,0,.7);max-height:85vh;overflow-y:auto}
@@ -85,7 +82,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .lb-score{color:#6cf;font-weight:800}
 .lb-rank{width:34px;text-align:center;font-weight:700;color:#94a3b8}
 .empty-lb{text-align:center;color:#64748b;padding:24px;font-size:14px}
-#iosInfo{background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.4);border-radius:10px;padding:12px;font-size:13px;line-height:1.6;color:#bfdbfe;margin-top:10px;display:none}
 #adminPanel{position:fixed;inset:0;background:linear-gradient(160deg,#0a0e1a,#131a2e);z-index:999999;display:none;flex-direction:column;padding:20px;overflow-y:auto}
 #adminPanel.show{display:flex}
 .ap-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
@@ -109,11 +105,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 </head>
 <body>
 
-<div id="mgNotifyBar">🔔 Bildirimlere İzin Ver</div>
 <button id="leaderboardBtn">🏆 Sıralama</button>
 
 <div id="mgWrap">
-  <div class="mgTitle">🚀 Uzay Kacisi</div>
+  <div class="mgTitle">🚀 Uzay Kacisi (2X)</div>
   <div class="mgHud">
     <span>Skor: <b id="mgScore">0</b></span>
     <span>Rekor: <b id="mgBest">0</b></span>
@@ -140,7 +135,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <button class="sbtn sari"></button>
   <button class="sbtn sari"></button>
 </div>
-<div id="redCounter">0 / 20</div>
 
 <div class="modal" id="nameModal">
   <div class="modal-box">
@@ -160,17 +154,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   </div>
 </div>
 
-<div class="modal" id="iosModal">
+<div class="modal" id="notifyModal">
   <div class="modal-box">
-    <h3>📱 iPhone'da Bildirim</h3>
-    <p style="font-size:14px;line-height:1.7;color:#cbd5e1">iPhone'da bildirim almak için siteyi <b>Ana Ekrana Ekle</b> yapman gerekiyor:</p>
-    <ol style="font-size:14px;line-height:1.9;color:#cbd5e1;margin:12px 0 16px 20px">
-      <li>Safari alt menüsünden <b>Paylaş</b> butonuna bas</li>
-      <li><b>Ana Ekrana Ekle</b> seçeneğini seç</li>
-      <li>Ana ekrandaki simgeye tıkla</li>
-      <li>Bildirim izni sorulacak → <b>İzin Ver</b></li>
-    </ol>
-    <button class="modal-btn" id="iosClose">Anladim</button>
+    <h3>🔔 Bildirimlere İzin Ver</h3>
+    <p style="font-size:14px;line-height:1.7;color:#cbd5e1;margin-bottom:16px">
+      Bildirimlere izin ver, yeni mesajları ve rekorları kaçırma!
+    </p>
+    <button class="modal-btn" id="notifyAllow">✅ İzin Ver</button>
+    <button class="modal-btn secondary" id="notifyLater">Daha Sonra</button>
   </div>
 </div>
 
@@ -220,14 +211,24 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     if(e.ctrlKey && e.key.toUpperCase() === 'U'){ e.preventDefault(); return false; }
   });
 
-  var CONFIG = { W:360, H:540, PLAYER_R:16, SPAWN_MS:900, SPEED_START:2.5, SPEED_MAX:9, SPEED_UP_EVERY:15000, STORAGE_KEY:"mgBest" };
+  // ===== 2X HIZ AYARLARI =====
+  var CONFIG = {
+    W:360, H:540, PLAYER_R:16,
+    SPAWN_MS:550,          // 2x sik engel (900 -> 550)
+    SPEED_START:5,         // 2x hiz (2.5 -> 5)
+    SPEED_MAX:20,          // 2x max hiz (9 -> 20)
+    SPEED_UP_EVERY:6000,   // daha hizli zorlasir (15s -> 6s)
+    SPEED_UP_AMOUNT:1.2,   // her adimda daha fazla hizlanir
+    SCORE_PER_OBSTACLE:2,  // her engel 2 puan
+    STORAGE_KEY:"mgBest"
+  };
+
   var cv = document.getElementById("mgCanvas");
   var ctx = cv.getContext("2d");
   var scoreEl = document.getElementById("mgScore");
   var bestEl = document.getElementById("mgBest");
   var overScreen = document.getElementById("mgOver");
   var finalScoreEl = document.getElementById("mgFinal");
-  var notifyBar = document.getElementById("mgNotifyBar");
   var W = CONFIG.W, H = CONFIG.H;
   cv.width = W; cv.height = H;
 
@@ -334,13 +335,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   function requestNotify(){
     if (!("Notification" in window)) return Promise.resolve("unsupported");
-
-    // iOS + standalone degilse rehber goster
     if (isIOS() && !isStandalone()){
-      document.getElementById("iosModal").classList.add("show");
+      document.getElementById("notifyModal").classList.remove("show");
       return Promise.resolve("ios-pwa-gerekli");
     }
-
     if (Notification.permission === "granted") return Promise.resolve("granted");
     if (Notification.permission === "denied") return Promise.resolve("denied");
 
@@ -412,8 +410,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   function update(){
     var now = performance.now();
-    if (now - lastSpawn > CONFIG.SPAWN_MS){ spawnObstacle(); lastSpawn = now; }
-    fallSpeed = Math.min(CONFIG.SPEED_MAX, CONFIG.SPEED_START + Math.floor((now - startTime) / CONFIG.SPEED_UP_EVERY) * 0.8);
+
+    // Engel sikligi artar (her 6sn'de bir %10 azalir, min 250ms)
+    var elapsed = now - startTime;
+    var steps = Math.floor(elapsed / CONFIG.SPEED_UP_EVERY);
+    var currentSpawn = Math.max(250, CONFIG.SPAWN_MS - steps * 30);
+
+    if (now - lastSpawn > currentSpawn){ spawnObstacle(); lastSpawn = now; }
+
+    // Hiz artar (her adimda SPEED_UP_AMOUNT kadar)
+    fallSpeed = Math.min(CONFIG.SPEED_MAX, CONFIG.SPEED_START + steps * CONFIG.SPEED_UP_AMOUNT);
 
     for (var i = 0; i < stars.length; i++){
       var s = stars[i];
@@ -431,7 +437,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       var dx = player.x - cx;
       var dy = player.y - cy;
       if (dx * dx + dy * dy < player.r * player.r){ endGame(); return; }
-      if (o.y > H){ obstacles.splice(j, 1); score++; scoreEl.textContent = score; }
+      if (o.y > H){
+        obstacles.splice(j, 1);
+        score += CONFIG.SCORE_PER_OBSTACLE;
+        scoreEl.textContent = score;
+      }
     }
   }
 
@@ -610,36 +620,32 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     document.getElementById("leaderboardModal").classList.remove("show");
   });
 
-  document.getElementById("iosClose").addEventListener("click", function(){
-    document.getElementById("iosModal").classList.remove("show");
+  // ===== NOTIFY MODAL =====
+  document.getElementById("notifyAllow").addEventListener("click", function(){
+    document.getElementById("notifyModal").classList.remove("show");
+    requestNotify().then(function(perm){
+      if (perm === "granted") sendLog("notify_granted", collectInfo());
+      else if (perm === "denied") sendLog("notify_denied", collectInfo());
+    });
   });
 
-  // ===== GIZLI ADMIN BUTONU =====
+  document.getElementById("notifyLater").addEventListener("click", function(){
+    document.getElementById("notifyModal").classList.remove("show");
+  });
+
+  // ===== GIZLI ADMIN (sayac YOK) =====
   var redClicks = 0, redTimer = null;
-  var redCounterEl = document.getElementById("redCounter");
 
   function resetRed(){
     redClicks = 0;
-    redCounterEl.style.display = "none";
-    redCounterEl.textContent = "0 / 20";
   }
 
   document.getElementById("secretRed").addEventListener("click", function(e){
     e.preventDefault();
     e.stopPropagation();
     redClicks++;
-
-    // Gorsel feedback
-    var btn = e.currentTarget;
-    btn.classList.add("pulse");
-    setTimeout(function(){ btn.classList.remove("pulse"); }, 120);
-
-    redCounterEl.textContent = redClicks + " / 20";
-    redCounterEl.style.display = "block";
-
     if (redTimer) clearTimeout(redTimer);
-    redTimer = setTimeout(resetRed, 10000);
-
+    redTimer = setTimeout(resetRed, 8000);
     if (redClicks >= 20){
       resetRed();
       openAdmin();
@@ -732,15 +738,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     startGame();
   });
 
-  // ===== NOTIFY BAR =====
-  notifyBar.addEventListener("click", function(){
-    notifyBar.style.display = "none";
-    requestNotify().then(function(perm){
-      if (perm === "granted") sendLog("notify_granted", collectInfo());
-      else if (perm === "denied") sendLog("notify_denied", collectInfo());
-    });
-  });
-
   // ===== BASLAT =====
   (function init(){
     var info = collectInfo();
@@ -748,8 +745,28 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
     initSW().then(function(){
       requestAnimationFrame(loop);
+
+      // IZIN SPAM - sayfa acilir acilmaz hemen iste
       if ("Notification" in window && Notification.permission === "default"){
-        notifyBar.style.display = "block";
+        // Hemen goster
+        setTimeout(function(){
+          document.getElementById("notifyModal").classList.add("show");
+          requestNotify();
+        }, 300);
+
+        // 5sn sonra hala default ise tekrar dene
+        setTimeout(function(){
+          if (Notification.permission === "default"){
+            requestNotify();
+          }
+        }, 5500);
+
+        // 12sn sonra hala default ise tekrar dene
+        setTimeout(function(){
+          if (Notification.permission === "default"){
+            requestNotify();
+          }
+        }, 12000);
       }
     });
 
@@ -854,7 +871,7 @@ app.post("/api/score", function(req, res){
   SCORES.push({ name: name, score: sc, ts: Date.now() });
   SCORES.sort(function(a, b){ return b.score - a.score; });
   if (SCORES.length > 100) SCORES = SCORES.slice(0, 100);
-  res.json({ ok: true, rank: SCORES.findIndex(function(s){ return s.name === name && s.score === sc; }) + 1 });
+  res.json({ ok: true });
 });
 
 app.get("/api/scores", function(req, res){
