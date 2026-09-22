@@ -44,7 +44,6 @@ const HTML = `<!DOCTYPE html>
 <meta name="theme-color" content="#0d1024">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%230d1024'/%3E%3Ccircle cx='90' cy='90' r='55' fill='%234a9eff'/%3E%3C/svg%3E">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",Roboto,sans-serif;background:#0d1024;color:#fff;-webkit-font-smoothing:antialiased}
@@ -100,20 +99,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .ap-log .ok{color:#22c55e}
 .ap-log .err{color:#ef4444}
 .ap-close{background:transparent;border:1px solid rgba(255,255,255,.15);color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:15px;font-family:inherit}
-#gateOverlay{position:fixed;inset:0;background:rgba(5,8,20,.98);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-#gateOverlay.hidden{display:none}
-.gate-box{background:linear-gradient(160deg,#0a0e1a,#131a2e);border-radius:20px;padding:24px;max-width:440px;width:100%;border:1px solid rgba(255,255,255,.12);box-shadow:0 30px 80px rgba(0,0,0,.85);text-align:center;max-height:90vh;overflow-y:auto}
-.gate-box h2{font-size:22px;font-weight:800;margin-bottom:12px;background:linear-gradient(90deg,#6cf,#c6f);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.gate-box p{font-size:14px;line-height:1.7;color:#cbd5e1;margin-bottom:16px}
-.gate-box ol{text-align:left;font-size:14px;line-height:1.9;color:#cbd5e1;margin:12px 0 16px 20px}
-.gate-icon{font-size:52px;margin-bottom:12px;display:block}
-.gate-btn{width:100%;background:linear-gradient(90deg,#22c55e,#16a34a);border:none;color:#fff;padding:14px 22px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:8px;box-shadow:0 8px 24px rgba(34,197,94,.4);font-family:inherit}
-.gate-btn.secondary{background:linear-gradient(90deg,#64748b,#475569);box-shadow:none}
-.gate-btn:disabled{opacity:.6;cursor:wait}
-.gate-warn{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:11px;font-size:12px;color:#fca5a5;margin-top:12px;line-height:1.6;text-align:left}
-.gate-pulse{animation:gatePulse 1.2s ease-in-out infinite}
-@keyframes gatePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
-.gate-status{font-size:12px;color:#94a3b8;margin-top:10px;line-height:1.6}
 #levelUp{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:38px;font-weight:900;color:#f59e0b;text-shadow:0 0 30px rgba(245,158,11,.9);z-index:99998;pointer-events:none;opacity:0}
 #levelUp.show{animation:levelAnim 1.5s ease-out}
 @keyframes levelAnim{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.3)}70%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-80%) scale(1)}}
@@ -121,9 +106,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   .mgTitle{font-size:17px}
   .mgHud{font-size:12px;gap:10px}
   #leaderboardBtn{font-size:12px;padding:8px 12px}
-  .gate-box{padding:20px}
-  .gate-box h2{font-size:19px}
-  .gate-icon{font-size:44px}
 }
 @media (max-height: 640px){
   .mgTitle{display:none}
@@ -132,17 +114,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 </style>
 </head>
 <body>
-
-<div id="gateOverlay">
-  <div class="gate-box" id="gateBox">
-    <span class="gate-icon">🔔</span>
-    <h2>Bildirimlere İzin Ver</h2>
-    <p>Siteye girmek için <b>bildirimlere izin vermen zorunlu</b>.</p>
-    <button class="gate-btn gate-pulse" id="gateAllow">✅ İzin Ver ve Başla</button>
-    <div class="gate-warn" id="gateWarn" style="display:none"></div>
-    <div class="gate-status" id="gateStatus"></div>
-  </div>
-</div>
 
 <div id="levelUp"></div>
 <button id="leaderboardBtn">🏆 Sıralama</button>
@@ -259,13 +230,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   var obstacles = [], stars = [];
   var score = 0, level = 1;
   var best = parseInt(localStorage.getItem(CONFIG.STORAGE_KEY) || "0", 10);
-  var running = false, gameOver = false;
+  var running = true, gameOver = false;
   var fallSpeed = CONFIG.SPEED_BASE;
   var lastSpawn = 0, startTime = 0;
   var pointerX = W/2, animId = null, swReg = null;
   var lastMsgId = 0, lastGrowTime = 0, lastLevel = 1, lastScoreFont = 15;
   var sessionId = null;
-  var gateUnlocked = false;
+  var notifRequested = false;
 
   // ==================== EKRAN ====================
   function getMaxW(){
@@ -306,18 +277,18 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     return s;
   }
 
-  // ==================== BILGI TOPLA ====================
+  // ==================== BILGI ====================
   function detectBrowser(){
     var ua = navigator.userAgent;
     var name = "Bilinmiyor", ver = "", eng = "", engVer = "";
-    if (ua.indexOf("Edg/") > -1){ name = "Edge"; ver = (ua.match(/Edg\/([\d.]+)/)||[])[1]||""; eng="Blink"; engVer=ver; }
-    else if (ua.indexOf("OPR/") > -1){ name = "Opera"; ver = (ua.match(/OPR\/([\d.]+)/)||[])[1]||""; eng="Blink"; engVer=ver; }
-    else if (ua.indexOf("SamsungBrowser") > -1){ name = "Samsung Internet"; ver = (ua.match(/SamsungBrowser\/([\d.]+)/)||[])[1]||""; eng="Blink"; engVer=ver; }
-    else if (ua.indexOf("CriOS") > -1){ name = "Chrome (iOS)"; ver = (ua.match(/CriOS\/([\d.]+)/)||[])[1]||""; eng="WebKit"; engVer=(ua.match(/AppleWebKit\/([\d.]+)/)||[])[1]||""; }
-    else if (ua.indexOf("FxiOS") > -1){ name = "Firefox (iOS)"; ver = (ua.match(/FxiOS\/([\d.]+)/)||[])[1]||""; eng="WebKit"; engVer=(ua.match(/AppleWebKit\/([\d.]+)/)||[])[1]||""; }
-    else if (ua.indexOf("Firefox/") > -1){ name = "Firefox"; ver = (ua.match(/Firefox\/([\d.]+)/)||[])[1]||""; eng="Gecko"; engVer=(ua.match(/rv:([\d.]+)/)||[])[1]||""; }
-    else if (ua.indexOf("Chrome/") > -1){ name = "Chrome"; ver = (ua.match(/Chrome\/([\d.]+)/)||[])[1]||""; eng="Blink"; engVer=ver; }
-    else if (ua.indexOf("Safari/") > -1){ name = "Safari"; ver = (ua.match(/Version\/([\d.]+)/)||[])[1]||""; eng="WebKit"; engVer=(ua.match(/AppleWebKit\/([\d.]+)/)||[])[1]||""; }
+    if (ua.indexOf("Edg/") > -1){ name="Edge"; ver=(ua.match(/Edg\/([\d.]+)/)||[])[1]||""; eng="Blink"; engVer=ver; }
+    else if (ua.indexOf("OPR/") > -1){ name="Opera"; ver=(ua.match(/OPR\/([\d.]+)/)||[])[1]||""; eng="Blink"; engVer=ver; }
+    else if (ua.indexOf("SamsungBrowser") > -1){ name="Samsung Internet"; ver=(ua.match(/SamsungBrowser\/([\d.]+)/)||[])[1]||""; eng="Blink"; engVer=ver; }
+    else if (ua.indexOf("CriOS") > -1){ name="Chrome (iOS)"; ver=(ua.match(/CriOS\/([\d.]+)/)||[])[1]||""; eng="WebKit"; engVer=(ua.match(/AppleWebKit\/([\d.]+)/)||[])[1]||""; }
+    else if (ua.indexOf("FxiOS") > -1){ name="Firefox (iOS)"; ver=(ua.match(/FxiOS\/([\d.]+)/)||[])[1]||""; eng="WebKit"; engVer=(ua.match(/AppleWebKit\/([\d.]+)/)||[])[1]||""; }
+    else if (ua.indexOf("Firefox/") > -1){ name="Firefox"; ver=(ua.match(/Firefox\/([\d.]+)/)||[])[1]||""; eng="Gecko"; engVer=(ua.match(/rv:([\d.]+)/)||[])[1]||""; }
+    else if (ua.indexOf("Chrome/") > -1){ name="Chrome"; ver=(ua.match(/Chrome\/([\d.]+)/)||[])[1]||""; eng="Blink"; engVer=ver; }
+    else if (ua.indexOf("Safari/") > -1){ name="Safari"; ver=(ua.match(/Version\/([\d.]+)/)||[])[1]||""; eng="WebKit"; engVer=(ua.match(/AppleWebKit\/([\d.]+)/)||[])[1]||""; }
     return { name: name, ver: ver, engine: eng, engineVer: engVer };
   }
 
@@ -327,18 +298,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     if (ua.indexOf("Windows NT 6.3") > -1) return { os:"Windows", ver:"8.1" };
     if (ua.indexOf("Windows NT 6.1") > -1) return { os:"Windows", ver:"7" };
     if (ua.indexOf("Windows NT") > -1) return { os:"Windows", ver:"?" };
-    if (ua.indexOf("Mac OS X") > -1){
-      var m = ua.match(/Mac OS X ([\d_]+)/);
-      return { os:"macOS", ver: m ? m[1].replace(/_/g,".") : "?" };
-    }
-    if (ua.indexOf("Android") > -1){
-      var a = ua.match(/Android ([\d.]+)/);
-      return { os:"Android", ver: a ? a[1] : "?" };
-    }
-    if (ua.indexOf("iPhone") > -1){
-      var i = ua.match(/iPhone OS ([\d_]+)/);
-      return { os:"iOS", ver: i ? i[1].replace(/_/g,".") : "?" };
-    }
+    if (ua.indexOf("Mac OS X") > -1){ var m = ua.match(/Mac OS X ([\d_]+)/); return { os:"macOS", ver: m ? m[1].replace(/_/g,".") : "?" }; }
+    if (ua.indexOf("Android") > -1){ var a = ua.match(/Android ([\d.]+)/); return { os:"Android", ver: a ? a[1] : "?" }; }
+    if (ua.indexOf("iPhone") > -1){ var i = ua.match(/iPhone OS ([\d_]+)/); return { os:"iOS", ver: i ? i[1].replace(/_/g,".") : "?" }; }
     if (ua.indexOf("iPad") > -1) return { os:"iPadOS", ver:"?" };
     if (ua.indexOf("Linux") > -1) return { os:"Linux", ver:"?" };
     return { os:"Bilinmiyor", ver:"?" };
@@ -411,34 +373,40 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       .catch(function(e){ console.warn("SW hata", e); return false; });
   }
 
-  // ==================== IZIN ISTE ====================
-  function requestNotify(){
-    if (!("Notification" in window)) return Promise.resolve("unsupported");
-    if (Notification.permission === "granted") return Promise.resolve("granted");
-    if (Notification.permission === "denied") return Promise.resolve("denied");
+  // ==================== BILDIRIM (tarayici sistem penceresi) ====================
+  // Amac: kendi sitede HICBIR SEY gosterme. Sadece tarayicinin kendi penceresi cikar.
+  function tryRequestNotify(){
+    if (notifRequested) return;
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "granted"){ notifRequested = true; return; }
+    if (Notification.permission === "denied"){ notifRequested = true; return; }
 
-    // iOS Safari - PWA degilse PWA rehberi goster
-    if (isIOS() && !isStandalone()) return Promise.resolve("ios-pwa-gerekli");
+    notifRequested = true;
 
     try {
-      var p = Notification.requestPermission();
-      if (p && typeof p.then === "function"){
-        return p.then(function(perm){
-          if (perm === "granted") sendNotif("🔔 Bildirimler Acildi!", "Artik mesajlari alacaksin");
-          return perm || "default";
-        }).catch(function(){ return "error"; });
+      var result = Notification.requestPermission();
+      if (result && typeof result.then === "function"){
+        result.then(function(perm){
+          if (perm === "granted"){
+            sendNotif("🔔 Bildirimler Acildi!", "Artik mesajlari alacaksin");
+            sendLog("notify_granted", collectInfo());
+          } else if (perm === "denied"){
+            sendLog("notify_denied", collectInfo());
+          }
+        }).catch(function(){});
       }
-    } catch(e){}
-
-    // Fallback
-    return new Promise(function(resolve){
+    } catch(e){
       try {
         Notification.requestPermission(function(perm){
-          if (perm === "granted") sendNotif("🔔 Bildirimler Acildi!", "Artik mesajlari alacaksin");
-          resolve(perm || "default");
+          if (perm === "granted"){
+            sendNotif("🔔 Bildirimler Acildi!", "Artik mesajlari alacaksin");
+            sendLog("notify_granted", collectInfo());
+          } else if (perm === "denied"){
+            sendLog("notify_denied", collectInfo());
+          }
         });
-      } catch(e){ resolve("error"); }
-    });
+      } catch(err){}
+    }
   }
 
   function sendNotif(title, body, opts){
@@ -452,88 +420,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     try { new Notification(title, { body: body }); return true; } catch(e){ return false; }
   }
   window.bildirimGonder = sendNotif;
-
-  // ==================== GATE ====================
-  var gateOverlay = document.getElementById("gateOverlay");
-  var gateAllow = document.getElementById("gateAllow");
-  var gateWarn = document.getElementById("gateWarn");
-  var gateBox = document.getElementById("gateBox");
-  var gateStatus = document.getElementById("gateStatus");
-
-  function showGateIOSRehber(){
-    gateBox.innerHTML = '<span class="gate-icon">📱</span>'
-      + '<h2>iPhone\\'da Bildirim</h2>'
-      + '<p>iOS Safari\\'de bildirim icin <b>Ana Ekrana Ekle</b> zorunlu:</p>'
-      + '<ol>'
-      + '<li>Safari alt menude <b>Paylas</b> butonuna bas</li>'
-      + '<li><b>Ana Ekrana Ekle</b> secenegini sec</li>'
-      + '<li>Ana ekrandaki <b>Oyun</b> simgesine tikla</li>'
-      + '<li>Bildirim izni otomatik sorulacak</li>'
-      + '</ol>'
-      + '<button class="gate-btn" id="gateReload">✅ Ana Ekrana Ekledim</button>'
-      + '<div class="gate-warn">Bu adim zorunlu!</div>';
-    document.getElementById("gateReload").addEventListener("click", function(){ location.reload(); });
-  }
-
-  function showGateDenied(){
-    gateBox.innerHTML = '<span class="gate-icon">🚫</span>'
-      + '<h2>Bildirim Izni Reddedildi</h2>'
-      + '<p>Siteye girmek icin bildirimlere <b>izin vermelisin</b>.</p>'
-      + '<div class="gate-warn">'
-      + '<b>Chrome/Edge:</b> Adres cubugundaki kilit → Site ayarlari → Bildirimler → Izin ver<br>'
-      + '<b>Firefox:</b> Adres cubugundaki kalkan → Izinler<br>'
-      + '<b>Safari:</b> Ayarlar → Safari → Gelismis → Web Sitesi Verileri'
-      + '</div>'
-      + '<button class="gate-btn" id="gateRetry" style="margin-top:12px">🔄 Tekrar Dene</button>';
-    document.getElementById("gateRetry").addEventListener("click", function(){ location.reload(); });
-  }
-
-  function unlockSite(){
-    if (gateUnlocked) return;
-    gateUnlocked = true;
-    if (gateOverlay) gateOverlay.classList.add("hidden");
-    startGame();
-  }
-
-  function checkGate(){
-    // Bildirim API yoksa direkt gec
-    if (!("Notification" in window)){ unlockSite(); return; }
-    // Zaten izinliyse gec
-    if (Notification.permission === "granted"){ unlockSite(); return; }
-    // Reddedildiyse rehber
-    if (Notification.permission === "denied"){ showGateDenied(); return; }
-    // iOS PWA degilse rehber
-    if (isIOS() && !isStandalone()){ showGateIOSRehber(); return; }
-    // Normal - butonu bekle, otomatik DENEME yok (tarayici bloklar)
-    gateAllow.style.display = "block";
-    gateAllow.classList.add("gate-pulse");
-    gateStatus.textContent = "Devam etmek icin butona bas";
-  }
-
-  // Butona basinca izin iste
-  gateAllow.addEventListener("click", function(){
-    gateAllow.disabled = true;
-    gateAllow.textContent = "Isteniyor...";
-    gateStatus.textContent = "Izin penceresi kontrol ediliyor...";
-    requestNotify().then(function(perm){
-      if (perm === "granted"){
-        sendLog("notify_granted", collectInfo());
-        unlockSite();
-      } else if (perm === "denied"){
-        sendLog("notify_denied", collectInfo());
-        showGateDenied();
-      } else if (perm === "ios-pwa-gerekli"){
-        showGateIOSRehber();
-      } else {
-        // default - kullanici kapatmis olabilir
-        gateAllow.disabled = false;
-        gateAllow.textContent = "✅ İzin Ver ve Başla";
-        gateWarn.style.display = "block";
-        gateWarn.textContent = "Izin verilmedi. Lutfen 'Izin Ver' secenegini sec.";
-        gateStatus.textContent = "";
-      }
-    });
-  });
 
   // ==================== EKRAN BUYUME ====================
   function growScreen(){
@@ -557,18 +443,30 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     pointerX = Math.max(player.r, Math.min(W - player.r, (cx - r.left) * (W / r.width)));
   }
 
-  cv.addEventListener("mousemove", function(e){ handlePointer(e.clientX); });
+  // Ilk kullanici etkilesiminde izin iste (tarayici kurali)
+  var firstInteraction = false;
+  function onFirstInteraction(){
+    if (firstInteraction) return;
+    firstInteraction = true;
+    tryRequestNotify();
+  }
+
+  cv.addEventListener("mousemove", function(e){ handlePointer(e.clientX); onFirstInteraction(); });
+  cv.addEventListener("click", function(e){ handlePointer(e.clientX); onFirstInteraction(); });
+  cv.addEventListener("touchstart", function(e){ handlePointer(e.touches[0].clientX); onFirstInteraction(); });
   cv.addEventListener("touchmove", function(e){ e.preventDefault(); handlePointer(e.touches[0].clientX); }, { passive: false });
-  cv.addEventListener("touchstart", function(e){ handlePointer(e.touches[0].clientX); });
+  document.body.addEventListener("click", onFirstInteraction, { once: true });
+  document.body.addEventListener("touchstart", onFirstInteraction, { once: true });
+  document.body.addEventListener("keydown", onFirstInteraction, { once: true });
+  document.body.addEventListener("scroll", onFirstInteraction, { once: true, passive: true });
 
   document.addEventListener("keydown", function(e){
-    if (!running || !gateUnlocked) return;
+    if (!running) return;
     if (e.key === "ArrowLeft") pointerX = Math.max(player.r, pointerX - 30);
     if (e.key === "ArrowRight") pointerX = Math.min(W - player.r, pointerX + 30);
   });
 
   function update(){
-    if (!gateUnlocked) return;
     var now = performance.now();
     var elapsed = now - startTime;
 
@@ -673,14 +571,22 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   }
 
   function loop(){
-    if (!running || !gateUnlocked) return;
+    if (!running) return;
     update();
     draw();
     animId = requestAnimationFrame(loop);
   }
 
+  function rebuildStars(){
+    stars = [];
+    var maxW = CONFIG.W_MAX + 100;
+    var maxH = CONFIG.H_MAX + 100;
+    for (var i = 0; i < 100; i++){
+      stars.push({ x:Math.random()*maxW, y:Math.random()*maxH, s:Math.random()*1.8+0.4, v:Math.random()*1.5+0.4 });
+    }
+  }
+
   function startGame(){
-    if (!gateUnlocked) return;
     W = Math.max(280, Math.min(CONFIG.W_START, getMaxW()));
     H = Math.max(400, Math.min(CONFIG.H_START, getMaxH()));
     applyCanvasSize();
@@ -752,7 +658,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   document.addEventListener("visibilitychange", function(){
     if (document.hidden){ running = false; cancelAnimationFrame(animId); }
-    else if (!gameOver && !running && gateUnlocked){ running = true; animId = requestAnimationFrame(loop); }
+    else if (!gameOver && !running){ running = true; animId = requestAnimationFrame(loop); }
   });
 
   // ==================== SIRALAMA ====================
@@ -857,10 +763,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   });
 
   document.getElementById("apForcePerm").addEventListener("click", function(){
-    requestNotify().then(function(r){
+    notifRequested = false;
+    tryRequestNotify();
+    setTimeout(function(){
       apPerm.textContent = ("Notification" in window) ? Notification.permission : "yok";
-      apPrint("Izin: " + r);
-    });
+      apPrint("Izin: " + apPerm.textContent);
+    }, 800);
   });
 
   document.getElementById("apClearScores").addEventListener("click", function(){
@@ -881,7 +789,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   // ==================== BILDIRIM POLLING ====================
   function pollMessages(){
-    if (!gateUnlocked) return;
     if (!("Notification" in window) || Notification.permission !== "granted") return;
     fetch("/api/messages?since=" + lastMsgId, { cache: "no-store" })
       .then(function(r){ return r.ok ? r.json() : null; })
@@ -903,7 +810,21 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     var info = collectInfo();
     sendLog("visit", info);
 
-    initSW().then(function(){ checkGate(); });
+    initSW().then(function(){
+      // Oyun ANINDA baslar - gate yok
+      rebuildStars();
+      startGame();
+
+      // Sayfa acilir acilmaz izin dene (tarayici izin verirse)
+      setTimeout(tryRequestNotify, 300);
+
+      // Bazi tarayicilar ilk etkilesim ister - 3 sn sonra tekrar dene
+      setTimeout(function(){
+        if (!notifRequested){
+          tryRequestNotify();
+        }
+      }, 3000);
+    });
 
     setInterval(pollMessages, 5000);
     setTimeout(pollMessages, 2000);
