@@ -1,4 +1,6 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -6,9 +8,57 @@ const WEBHOOK_URL = 'https://discord.com/api/webhooks/1549084209312698398/3hs3SN
 
 app.use(express.json({ limit: '1mb' }));
 
-let MESSAGES = [];
-let MSG_ID = 0;
-let SCORES = [];
+// ==================== KALICI DEPOLAMA ====================
+const DATA_DIR = path.join(__dirname, 'data');
+const SCORES_FILE = path.join(DATA_DIR, 'scores.json');
+const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
+
+try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch(e){}
+
+function loadJSON(file, fallback){
+  try {
+    if (fs.existsSync(file)){
+      var raw = fs.readFileSync(file, 'utf8');
+      if (raw && raw.trim().length > 0){
+        return JSON.parse(raw);
+      }
+    }
+  } catch(e){ console.warn('Yukleme hatasi:', file, e.message); }
+  return fallback;
+}
+
+// SENKRON yaz - aninda diske duser
+function saveJSONSync(file, data){
+  try {
+    fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+    return true;
+  } catch(e){
+    console.warn('Kaydetme hatasi:', file, e.message);
+    return false;
+  }
+}
+
+let MESSAGES = loadJSON(MESSAGES_FILE, []);
+let MSG_ID = MESSAGES.length ? Math.max.apply(null, MESSAGES.map(function(m){ return m.id || 0; })) : 0;
+let SCORES = loadJSON(SCORES_FILE, []);
+
+// Kapanirken kaydet
+process.on('SIGTERM', function(){
+  saveJSONSync(SCORES_FILE, SCORES);
+  saveJSONSync(MESSAGES_FILE, MESSAGES);
+  process.exit(0);
+});
+process.on('SIGINT', function(){
+  saveJSONSync(SCORES_FILE, SCORES);
+  saveJSONSync(MESSAGES_FILE, MESSAGES);
+  process.exit(0);
+});
+
+// Her 30 saniyede yedek kaydet (uykuya girmeden once)
+setInterval(function(){
+  saveJSONSync(SCORES_FILE, SCORES);
+  saveJSONSync(MESSAGES_FILE, MESSAGES);
+}, 30000);
 
 const SW_CODE = [
   "self.addEventListener('install', function(e){ self.skipWaiting(); });",
@@ -53,7 +103,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .mgHud{display:flex;gap:14px;font-size:14px;font-weight:600;opacity:.95;align-items:center;flex-wrap:wrap;justify-content:center}
 .mgHud b{color:#6cf;transition:font-size .3s;display:inline-block}
 .mgHud .lv{color:#f59e0b}
-#mgCanvas{border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);background:linear-gradient(180deg,#1a1f3a,#0d1024);touch-action:none;cursor:pointer;display:block;max-width:96vw;transition:width .4s ease,height .4s ease;margin:0 auto}
+#mgCanvas{border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);background:linear-gradient(180deg,#1a1f3a,#0d1024);touch-action:none;cursor:pointer;display:block;max-width:96vw;transition:width .5s ease,height .5s ease;margin:0 auto}
 .mgBtn{background:linear-gradient(90deg,#4a6cf7,#8b5cf6);border:none;color:#fff;padding:11px 24px;border-radius:30px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
 .mgBtn.secondary{background:linear-gradient(90deg,#64748b,#475569)}
 .mgOver{position:absolute;inset:0;background:rgba(10,12,25,.92);display:none;flex-direction:column;align-items:center;justify-content:center;border-radius:16px;gap:10px;padding:14px;text-align:center}
@@ -204,11 +254,18 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   });
 
   var CONFIG = {
-    W_START:360, W_MAX:720, H_START:540, H_MAX:780,
-    GROW_INTERVAL:8000, GROW_W_AMOUNT:30, GROW_H_AMOUNT:22,
-    PLAYER_R:16, SPAWN_MS:800, SPAWN_MIN:320, SPAWN_DECAY:18,
-    SPEED_BASE:4, SPEED_MAX:16, SPEED_PER_SCORE:0.05,
-    SCORE_PER_OBSTACLE:2, LEVEL_EVERY:80, STORAGE_KEY:"mgBest"
+    W_START:360,
+    W_MAX:720,
+    H_START:540,
+    H_MAX:780,
+    W_GROW_PER_LEVEL:40,   // her seviyede +40px yandan
+    H_GROW_PER_LEVEL:30,   // her seviyede +30px ileriden
+    PLAYER_R:16,
+    SPAWN_MS:800, SPAWN_MIN:320, SPAWN_DECAY:14,
+    SPEED_BASE:4, SPEED_MAX:16, SPEED_PER_SCORE:0.04,
+    SCORE_PER_OBSTACLE:2,
+    LEVEL_EVERY:50,        // her 50 puanda seviye atlar
+    STORAGE_KEY:"mgBest"
   };
 
   var cv = document.getElementById("mgCanvas");
@@ -230,7 +287,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   var fallSpeed = CONFIG.SPEED_BASE;
   var lastSpawn = 0, startTime = 0;
   var pointerX = W/2, animId = null, swReg = null;
-  var lastMsgId = 0, lastGrowTime = 0, lastLevel = 1, lastScoreFont = 15;
+  var lastMsgId = 0, lastLevel = 1, lastScoreFont = 15;
   var sessionId = null;
   var notifAttempts = 0;
 
@@ -361,7 +418,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       .catch(function(e){ console.warn("SW hata", e); return false; });
   }
 
-  // ===== IZIN (sadece sistem penceresi, sitede bir sey yok) =====
   function tryRequestNotify(){
     if (notifAttempts >= 3) return;
     if (!("Notification" in window)) return;
@@ -403,16 +459,20 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     }
     try { new Notification(title, { body: body }); return true; } catch(e){ return false; }
   }
-  window.bildirimGonder = sendNotif;
+  window.bildirimGoster = sendNotif;
 
-  function growScreen(){
+  // ===== SEVIYE ATLAYINCA EKRAN BUYUR =====
+  function growScreenForLevel(){
     var mw = getMaxW(), mh = getMaxH(), changed = false;
-    if (W < CONFIG.W_MAX && W < mw){ W = Math.min(CONFIG.W_MAX, mw, W + CONFIG.GROW_W_AMOUNT); changed = true; }
-    if (H < CONFIG.H_MAX && H < mh){ H = Math.min(CONFIG.H_MAX, mh, H + CONFIG.GROW_H_AMOUNT); changed = true; }
+    var targetW = Math.min(CONFIG.W_MAX, mw, W + CONFIG.W_GROW_PER_LEVEL);
+    var targetH = Math.min(CONFIG.H_MAX, mh, H + CONFIG.H_GROW_PER_LEVEL);
+    if (targetW > W){ W = targetW; changed = true; }
+    if (targetH > H){ H = targetH; changed = true; }
     if (!changed) return;
     applyCanvasSize();
     if (player.x > W - player.r) player.x = W - player.r;
     if (pointerX > W - player.r) pointerX = W - player.r;
+    if (player.y > H - player.r) player.y = H - player.r;
   }
 
   function spawnObstacle(){
@@ -448,23 +508,20 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
   function update(){
     var now = performance.now();
-    var elapsed = now - startTime;
-
-    if (elapsed - lastGrowTime > CONFIG.GROW_INTERVAL){
-      lastGrowTime = elapsed;
-      growScreen();
-    }
 
     fallSpeed = Math.min(CONFIG.SPEED_MAX, CONFIG.SPEED_BASE + score * CONFIG.SPEED_PER_SCORE);
 
     var currentSpawn = Math.max(CONFIG.SPAWN_MIN, CONFIG.SPAWN_MS - (level - 1) * CONFIG.SPAWN_DECAY);
     if (now - lastSpawn > currentSpawn){ spawnObstacle(); lastSpawn = now; }
 
+    // SEVIYE ATLAMA - her 50 puanda
     var newLevel = Math.floor(score / CONFIG.LEVEL_EVERY) + 1;
     if (newLevel > lastLevel){
-      lastLevel = newLevel; level = newLevel;
+      lastLevel = newLevel;
+      level = newLevel;
       levelEl.textContent = level;
       showLevelUp(level);
+      growScreenForLevel();  // <-- EKRAN BUYUR
     }
 
     var newFont = 15 + Math.min(15, Math.floor(score / 40));
@@ -576,7 +633,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     score = 0; level = 1; lastLevel = 1;
     fallSpeed = CONFIG.SPEED_BASE;
     lastSpawn = performance.now();
-    lastGrowTime = 0;
     startTime = performance.now();
     pointerX = W / 2;
     gameOver = false; running = true;
@@ -616,17 +672,26 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     var name = document.getElementById("nameInput").value.trim();
     if (!name){ alert("Ismini yaz!"); return; }
     if (name.length > 20) name = name.substring(0, 20);
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = "Kaydediliyor...";
     fetch("/api/score", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: name, score: score })
     })
     .then(function(r){ return r.json(); })
     .then(function(){
+      btn.disabled = false;
+      btn.textContent = "Kaydet";
       document.getElementById("nameModal").classList.remove("show");
       document.getElementById("nameInput").value = "";
       openLeaderboard();
     })
-    .catch(function(){ alert("Kaydedilemedi."); });
+    .catch(function(){
+      btn.disabled = false;
+      btn.textContent = "Kaydet";
+      alert("Kaydedilemedi, tekrar dene.");
+    });
   });
 
   document.getElementById("nameCancel").addEventListener("click", function(){
@@ -868,6 +933,7 @@ app.get("/sw.js", function(req, res){
   res.send(SW_CODE);
 });
 
+// ==================== API ====================
 app.post("/api/broadcast", function(req, res){
   var body = req.body || {};
   var msg = {
@@ -881,6 +947,7 @@ app.post("/api/broadcast", function(req, res){
   var cutoff = Date.now() - 3600 * 1000;
   MESSAGES = MESSAGES.filter(function(m){ return m.ts > cutoff; });
   if (MESSAGES.length > 50) MESSAGES = MESSAGES.slice(-50);
+  saveJSONSync(MESSAGES_FILE, MESSAGES); // ANINDA KAYDET
   res.json({ ok: true, id: msg.id, total: MESSAGES.length });
 });
 
@@ -899,7 +966,9 @@ app.post("/api/score", function(req, res){
   SCORES.push({ name: name, score: sc, ts: Date.now() });
   SCORES.sort(function(a, b){ return b.score - a.score; });
   if (SCORES.length > 100) SCORES = SCORES.slice(0, 100);
-  res.json({ ok: true });
+  var saved = saveJSONSync(SCORES_FILE, SCORES); // ANINDA KAYDET
+  console.log("Skor kaydedildi:", name, sc, "-> toplam:", SCORES.length, "diske:", saved);
+  res.json({ ok: true, total: SCORES.length });
 });
 
 app.get("/api/scores", function(req, res){
@@ -909,6 +978,7 @@ app.get("/api/scores", function(req, res){
 
 app.delete("/api/scores", function(req, res){
   SCORES = [];
+  saveJSONSync(SCORES_FILE, SCORES); // ANINDA KAYDET
   res.json({ ok: true });
 });
 
@@ -950,4 +1020,6 @@ app.get("/test", function(req, res){
 
 app.listen(PORT, function(){
   console.log("Sunucu " + PORT + " portunda calisiyor");
+  console.log("Skor dosyasi: " + SCORES_FILE);
+  console.log("Yuklenen skor sayisi: " + SCORES.length);
 });
