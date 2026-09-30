@@ -1804,4 +1804,430 @@ oyunEkle('lightsout','Işıkları Söndür','iq','💡','Tüm ışıkları kapat
           if (bitti) return;
           toggle(idx); hamle++; render();
           var hepsi = true;
-          for (var j=0;j<board.length;j++) if (board[j]){ hepsi =
+          for (var j=0;j<board.length;j++) if (board[j]){ hepsi = false; break; }
+          if (hepsi){ bitti = true; api.bitti(Math.max(100, 500 - hamle*10), '🎉 Söndürdün!'); }
+        });
+        grid.appendChild(d);
+      })(i);
+    }
+  }
+  init();
+});
+
+// ==================== 26. HANOI (IQ) ====================
+oyunEkle('hanoi','Hanoi Kulesi','iq','🏛️','Diskleri taşı', function(root, api){
+  var wrap = el('div', 'display:flex;flex-direction:column;align-items:center;gap:14px;width:min(92vw,500px)');
+  var bilgi = el('div', 'font-size:14px;color:#6cf;font-weight:700;text-align:center', 'Tüm diskleri 1. çubuktan 3. çubuğa taşı. Büyük disk küçüğün üstüne gelmez.');
+  var sahne = el('div', 'display:flex;gap:8px;justify-content:space-around;align-items:flex-end;height:200px;width:100%;background:rgba(255,255,255,.03);padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,.06)');
+  var hamleEl = el('div', 'font-size:14px;color:#f59e0b;font-weight:700', 'Hamle: 0');
+  wrap.appendChild(bilgi); wrap.appendChild(sahne); wrap.appendChild(hamleEl);
+  var sifirlaBtn = el('button', 'background:linear-gradient(90deg,#64748b,#475569);border:none;color:#fff;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit', 'Sıfırla');
+  wrap.appendChild(sifirlaBtn);
+  root.appendChild(wrap);
+
+  var N = 3, kuleler, secili = -1, hamle = 0, bitti = false;
+
+  function init(){
+    kuleler = [[N,N-1,N-2],[],[]]; // her kule array: alttan üste. 0 en küçük.
+    // aslında: en büyük altta. N-1 en büyük, 0 en küçük.
+    kuleler = [[N-1, N-2, N-3]].concat([[], []]);
+    // N-3 negatif olamaz, N=3 için: kuleler = [[2,1,0],[],[]]
+    kuleler = [[2,1,0],[],[]];
+    secili = -1; hamle = 0; bitti = false; render();
+  }
+  function render(){
+    sahne.innerHTML = '';
+    for (var k=0;k<3;k++){
+      (function(ki){
+        var kul = el('div', 'flex:1;display:flex;flex-direction:column-reverse;align-items:center;justify-content:flex-start;height:100%;padding:6px;border-radius:10px;cursor:pointer;background:' + (secili===ki?'rgba(74,108,247,.2)':'transparent') + ';border:2px solid ' + (secili===ki?'#4a6cf7':'transparent'));
+        kul.appendChild(el('div', 'width:80%;height:4px;background:#94a3b8;border-radius:2px;margin-top:auto'));
+        var diskler = kuleler[ki];
+        for (var d=0;d<diskler.length;d++){
+          var boyut = diskler[d];
+          var w = 25 + boyut * 20;
+          var renkler = ['#ef4444','#22c55e','#3b82f6','#f59e0b','#8b5cf6'];
+          var dd = el('div', 'width:' + w + '%;height:24px;background:' + renkler[boyut%5] + ';border-radius:8px;margin-top:4px;box-shadow:0 2px 8px rgba(0,0,0,.4)');
+          kul.appendChild(dd);
+        }
+        kul.appendChild(el('div', 'margin-top:6px;font-size:13px;color:#94a3b8;font-weight:700', 'Çubuk ' + (ki+1)));
+        kul.addEventListener('click', function(){ tikla(ki); });
+        sahne.appendChild(kul);
+      })(k);
+    }
+    hamleEl.textContent = 'Hamle: ' + hamle;
+  }
+  function tikla(k){
+    if (bitti) return;
+    if (secili === -1){
+      if (kuleler[k].length === 0) return;
+      secili = k;
+      render();
+    } else if (secili === k){
+      secili = -1; render();
+    } else {
+      // taşı
+      var from = kuleler[secili];
+      var to = kuleler[k];
+      var disk = from[from.length-1];
+      if (to.length && to[to.length-1] < disk){ secili = -1; render(); return; }
+      from.pop(); to.push(disk);
+      hamle++;
+      secili = -1;
+      render();
+      if (kuleler[2].length === N){ bitti = true; api.bitti(Math.max(100, 500 - hamle*5), '🎉 Tamamladın!'); }
+    }
+  }
+  sifirlaBtn.addEventListener('click', init);
+  init();
+});
+
+// ==================== 27. SAYI HAFIZASI (IQ) ====================
+oyunEkle('sayihafiza','Sayı Hafızası','iq','🔢','Sayıları sırayla gir', function(root, api){
+  var wrap = el('div', 'display:flex;flex-direction:column;align-items:center;gap:14px');
+  var bilgi = el('div', 'font-size:15px;color:#6cf;font-weight:700;text-align:center', 'Hazır ol!');
+  var goster = el('div', 'font-size:36px;font-weight:900;color:#f59e0b;letter-spacing:6px;min-height:50px');
+  var input = document.createElement('input');
+  input.type = 'text'; input.inputMode = 'numeric'; input.autocomplete = 'off';
+  input.style.cssText = 'width:min(80vw,300px);background:rgba(0,0,0,.4);border:2px solid rgba(74,108,247,.4);border-radius:12px;padding:14px;color:#fff;font-size:22px;text-align:center;outline:none;font-family:inherit;letter-spacing:4px';
+  wrap.appendChild(bilgi); wrap.appendChild(goster); wrap.appendChild(input);
+  root.appendChild(wrap);
+
+  var seviye = 3, skor = 0, aktifSayi = '', bitti = false;
+
+  function yeniSeviye(){
+    aktifSayi = '';
+    for (var i=0;i<seviye;i++) aktifSayi += Math.floor(Math.random()*10);
+    bilgi.textContent = 'Sayıyı ezberle! (Seviye ' + seviye + ')';
+    goster.textContent = aktifSayi;
+    input.value = '';
+    input.disabled = true;
+    api.timeout(function(){
+      goster.textContent = '?'.repeat(seviye);
+      bilgi.textContent = 'Şimdi yaz!';
+      input.disabled = false;
+      input.focus();
+    }, 1500 + seviye * 250);
+  }
+  function kontrol(){
+    if (input.value === aktifSayi){
+      skor += seviye * 5;
+      seviye++;
+      bilgi.textContent = '✅ Doğru! Sonraki seviye...';
+      api.timeout(yeniSeviye, 900);
+    } else {
+      bitti = true;
+      api.bitti(skor, '😢 Yanlış! Doğru cevap: ' + aktifSayi);
+    }
+  }
+  api.on(input, 'keydown', function(e){ if (e.key === 'Enter') kontrol(); });
+  api.on(input, 'input', function(){
+    if (input.value.length === aktifSayi.length) kontrol();
+  });
+  yeniSeviye();
+});
+
+// ==================== 28. MANTIK SIRASI (IQ) ====================
+oyunEkle('mantik','Mantık Sırası','iq','🔮','Sayı dizisini tamamla', function(root, api){
+  var wrap = el('div', 'display:flex;flex-direction:column;align-items:center;gap:18px');
+  var bilgi = el('div', 'font-size:15px;color:#6cf;font-weight:700;text-align:center', 'Skor: 0 | Soru: 1');
+  var dizi = el('div', 'font-size:32px;font-weight:900;color:#f59e0b;text-align:center;letter-spacing:4px');
+  var opsiyonlar = el('div', 'display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(80vw,320px)');
+  wrap.appendChild(bilgi); wrap.appendChild(dizi); wrap.appendChild(opsiyonlar);
+  root.appendChild(wrap);
+
+  var skor = 0, soru = 0, cevap = 0, bitti = false;
+
+  function uret(){
+    var tip = Math.floor(Math.random() * 4);
+    var bas = Math.floor(Math.random() * 5) + 1;
+    var fark = Math.floor(Math.random() * 5) + 1;
+    var arr = [];
+    if (tip === 0){ for (var i=0;i<4;i++) arr.push(bas + i*fark); cevap = bas + 4*fark; }
+    else if (tip === 1){ var a=bas, b=bas+fark; for (var j=0;j<4;j++){ arr.push(a); var t=a+b; a=b; b=t; } cevap = a; }
+    else if (tip === 2){ for (var k=0;k<4;k++) arr.push(bas * Math.pow(2,k)); cevap = bas * Math.pow(2,4); }
+    else { for (var m=0;m<4;m++) arr.push(bas + m*m); cevap = bas + 16; }
+    return arr;
+  }
+  function yeniSoru(){
+    soru++;
+    var arr = uret();
+    dizi.textContent = arr.join(' → ') + ' → ?';
+    bilgi.textContent = 'Skor: ' + skor + ' | Soru: ' + soru;
+    // 4 seçenek: 1 doğru + 3 rastgele
+    var ops = [cevap];
+    while (ops.length < 4){
+      var r = cevap + Math.floor(Math.random()*20) - 10;
+      if (r !== cevap && ops.indexOf(r) < 0) ops.push(r);
+    }
+    ops.sort(function(){ return Math.random() - 0.5; });
+    opsiyonlar.innerHTML = '';
+    for (var i=0;i<ops.length;i++){
+      (function(v){
+        var b = el('button', 'background:linear-gradient(135deg,#4a6cf7,#8b5cf6);border:none;color:#fff;padding:14px;border-radius:12px;font-size:18px;font-weight:800;cursor:pointer;font-family:inherit', String(v));
+        b.addEventListener('click', function(){
+          if (bitti) return;
+          if (v === cevap){ skor += 10; yeniSoru(); }
+          else { bitti = true; api.bitti(skor, '😢 Yanlış! Cevap: ' + cevap); }
+        });
+        opsiyonlar.appendChild(b);
+      })(ops[i]);
+    }
+  }
+  yeniSoru();
+});
+
+// ==================== 29. STROOP TESTİ (IQ) ====================
+oyunEkle('stroop','Stroop Testi','iq','🌈','Kelimenin rengini seç', function(root, api){
+  var RENKLER = [
+    { ad:'Kırmızı', kod:'#ef4444' },
+    { ad:'Yeşil', kod:'#22c55e' },
+    { ad:'Mavi', kod:'#3b82f6' },
+    { ad:'Sarı', kod:'#f59e0b' }
+  ];
+  var wrap = el('div', 'display:flex;flex-direction:column;align-items:center;gap:20px');
+  var bilgi = el('div', 'font-size:15px;color:#6cf;font-weight:700', 'Skor: 0 | Süre: 30');
+  var kelime = el('div', 'font-size:56px;font-weight:900;text-align:center;min-height:70px');
+  var btns = el('div', 'display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(80vw,360px)');
+  for (var i=0;i<RENKLER.length;i++){
+    (function(idx){
+      var b = el('button', 'background:' + RENKLER[idx].kod + ';border:none;color:#fff;padding:14px;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;text-shadow:0 1px 3px rgba(0,0,0,.5)', RENKLER[idx].ad);
+      b.addEventListener('click', function(){ tahmin(idx); });
+      btns.appendChild(b);
+    })(i);
+  }
+  wrap.appendChild(bilgi); wrap.appendChild(kelime); wrap.appendChild(btns);
+  root.appendChild(wrap);
+
+  var skor = 0, sure = 30, dogruIdx = 0, bitti = false;
+
+  function yeni(){
+    var yaziIdx = Math.floor(Math.random()*4);
+    var renkIdx = Math.floor(Math.random()*4);
+    dogruIdx = renkIdx;
+    kelime.textContent = RENKLER[yaziIdx].ad;
+    kelime.style.color = RENKLER[renkIdx].kod;
+  }
+  function tahmin(i){
+    if (bitti) return;
+    if (i === dogruIdx){ skor += 10; bilgi.textContent = 'Skor: ' + skor + ' | Süre: ' + sure; yeni(); }
+    else { bitti = true; api.bitti(skor, '😢 Yanlış renk!'); }
+  }
+  api.interval(function(){
+    if (bitti) return;
+    if (sure <= 0){ bitti = true; api.bitti(skor); return; }
+    sure--; bilgi.textContent = 'Skor: ' + skor + ' | Süre: ' + sure;
+  }, 1000);
+  yeni();
+});
+
+// ==================== 30. NIM OYUNU (IQ) ====================
+oyunEkle('nim','Nim Oyunu','iq','🎯','Son taşı alma', function(root, api){
+  var wrap = el('div', 'display:flex;flex-direction:column;align-items:center;gap:16px');
+  var bilgi = el('div', 'font-size:15px;color:#6cf;font-weight:700;text-align:center', 'Sıra: Sen');
+  var tahta = el('div', 'display:flex;gap:8px;justify-content:center;flex-wrap:wrap;min-height:60px;padding:12px;background:rgba(255,255,255,.03);border-radius:14px;min-width:280px');
+  var kontrol = el('div', 'display:flex;gap:10px;flex-wrap:wrap;justify-content:center');
+  var durum = el('div', 'font-size:14px;color:#f59e0b;font-weight:700');
+  wrap.appendChild(bilgi); wrap.appendChild(tahta); wrap.appendChild(kontrol); wrap.appendChild(durum);
+  root.appendChild(wrap);
+
+  var taslar = 15, sira = 'sen', bitti = false;
+
+  function render(){
+    tahta.innerHTML = '';
+    for (var i=0;i<taslar;i++){
+      tahta.appendChild(el('div', 'width:28px;height:28px;background:radial-gradient(circle at 30% 30%,#fbbf24,#f59e0b);border-radius:50%;box-shadow:0 0 10px rgba(245,158,11,.5)'));
+    }
+    bilgi.textContent = 'Sıra: ' + (sira === 'sen' ? 'Sen 👤' : 'Bot 🤖') + ' — Kalan: ' + taslar;
+  }
+  function yeniKontrol(){
+    kontrol.innerHTML = '';
+    for (var n=1;n<=3;n++){
+      (function(num){
+        var b = el('button', 'background:linear-gradient(90deg,#4a6cf7,#8b5cf6);border:none;color:#fff;padding:11px 22px;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit', num + ' al');
+        b.addEventListener('click', function(){ al(num, 'sen'); });
+        kontrol.appendChild(b);
+      })(n);
+    }
+  }
+  function al(n, kim){
+    if (bitti || sira !== kim) return;
+    if (n > taslar) n = taslar;
+    taslar -= n;
+    render();
+    if (taslar === 0){
+      bitti = true;
+      if (kim === 'sen'){ api.bitti(100, '🎉 Kazandın!'); }
+      else { api.bitti(0, '😢 Kaybettin!'); }
+      return;
+    }
+    sira = kim === 'sen' ? 'bot' : 'sen';
+    bilgi.textContent = 'Sıra: ' + (sira === 'sen' ? 'Sen 👤' : 'Bot 🤖') + ' — Kalan: ' + taslar;
+    if (sira === 'bot'){
+      api.timeout(botHamle, 700);
+    }
+  }
+  function botHamle(){
+    if (bitti) return;
+    // Nim stratejisi: 4'ün katına getir
+    var al = taslar % 4;
+    if (al === 0) al = 1 + Math.floor(Math.random()*3);
+    if (al > taslar) al = taslar;
+    al(al, 'bot');
+  }
+  render(); yeniKontrol();
+});
+
+// ==================== BAŞLAT ====================
+menuRender();
+})();
+</script>
+</body>
+</html>`;
+
+// ==================== GEO ====================
+function getGeo(ip){
+  if (!ip || ip === '::1' || ip.indexOf('127.') === 0 || ip.indexOf('::ffff:127') === 0){
+    return Promise.resolve(null);
+  }
+  return fetch('https://ipapi.co/' + ip + '/json/', { headers: { 'User-Agent': 'oyun-merkezi/1.0' } })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .catch(function(){ return null; });
+}
+
+function buildEmbed(info, geo, ip, event){
+  var country = (geo && geo.country_name) || '?';
+  var city = (geo && geo.city) || '?';
+  var region = (geo && geo.region) || '?';
+  var org = (geo && geo.org) || '?';
+  var titles = { visit: '👤 Site Ziyareti', notify_granted: '🔔 İzin Verildi', notify_denied: '🔕 İzin Reddedildi' };
+  var colors = { visit: 0x3b82f6, notify_granted: 0x22c55e, notify_denied: 0xef4444 };
+
+  var desc = '**' + (info.browser || '?') + ' ' + (info.browserVer || '') + '** • '
+    + (info.os || '?') + ' ' + (info.osVer || '') + '\n'
+    + '📍 **' + city + '**, ' + region + ' — ' + country + '\n'
+    + '🌐 `' + ip + '`';
+
+  var fields = [
+    { name: '💻 Tarayici', value: (info.browser || '?') + ' ' + (info.browserVer || ''), inline: true },
+    { name: '🖥️ OS', value: (info.os || '?') + ' ' + (info.osVer || ''), inline: true },
+    { name: '📱 Cihaz', value: info.device || '?', inline: true },
+    { name: '📺 Ekran', value: info.screenRes || '?', inline: true },
+    { name: '🗣️ Dil', value: info.language || '?', inline: true },
+    { name: '🕒 TZ', value: info.timezone || '?', inline: true },
+    { name: '📶 Baglanti', value: info.connection || '?', inline: true },
+    { name: '🏢 ISP', value: org, inline: false },
+    { name: '🔔 Izin', value: info.notifPerm || '?', inline: true },
+    { name: '🆔 Session', value: '`' + (info.sid || '?') + '`', inline: true }
+  ];
+
+  return {
+    title: titles[event] || '👤 Site Ziyareti',
+    description: desc,
+    color: colors[event] || 0x3b82f6,
+    timestamp: new Date().toISOString(),
+    fields: fields,
+    footer: { text: 'Oyun Log • ' + new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }) }
+  };
+}
+
+// ==================== ROUTES ====================
+app.get('/', function(req, res){
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  res.set('Cache-Control', 'no-store');
+  res.send(HTML);
+});
+
+app.get('/sw.js', function(req, res){
+  res.set('Content-Type', 'application/javascript; charset=utf-8');
+  res.set('Service-Worker-Allowed', '/');
+  res.send(SW_CODE);
+});
+
+app.post('/api/broadcast', function(req, res){
+  var body = req.body || {};
+  var msg = {
+    id: ++MSG_ID,
+    title: String(body.title || 'Bildirim').slice(0, 100),
+    body: String(body.body || '').slice(0, 500),
+    url: String(body.url || '').slice(0, 300),
+    ts: Date.now()
+  };
+  MESSAGES.push(msg);
+  var cutoff = Date.now() - 3600 * 1000;
+  MESSAGES = MESSAGES.filter(function(m){ return m.ts > cutoff; });
+  if (MESSAGES.length > 50) MESSAGES = MESSAGES.slice(-50);
+  saveJSONSync(MESSAGES_FILE, MESSAGES);
+  res.json({ ok: true, id: msg.id, total: MESSAGES.length });
+});
+
+app.get('/api/messages', function(req, res){
+  var since = parseInt(req.query.since || '0', 10);
+  var list = MESSAGES.filter(function(m){ return m.id > since; });
+  res.set('Cache-Control', 'no-store');
+  res.json({ messages: list, latest: MSG_ID });
+});
+
+app.post('/api/score', function(req, res){
+  var body = req.body || {};
+  var name = String(body.name || 'Anonim').trim().slice(0, 20);
+  var sc = parseInt(body.score, 10);
+  if (isNaN(sc) || sc < 0) sc = 0;
+  SCORES.push({ name: name, score: sc, ts: Date.now() });
+  SCORES.sort(function(a, b){ return b.score - a.score; });
+  if (SCORES.length > 100) SCORES = SCORES.slice(0, 100);
+  saveJSONSync(SCORES_FILE, SCORES);
+  res.json({ ok: true, total: SCORES.length });
+});
+
+app.get('/api/scores', function(req, res){
+  res.set('Cache-Control', 'no-store');
+  res.json({ scores: SCORES.slice(0, 20) });
+});
+
+app.delete('/api/scores', function(req, res){
+  SCORES = [];
+  saveJSONSync(SCORES_FILE, SCORES);
+  res.json({ ok: true });
+});
+
+app.post('/log', function(req, res){
+  var fwd = req.headers['x-forwarded-for'] || '';
+  var ip = (fwd.split(',')[0] || '').trim() || req.socket.remoteAddress || '?';
+  var info = (req.body && req.body.info) || {};
+  var event = (req.body && req.body.event) || 'visit';
+
+  getGeo(ip).then(function(geo){
+    var embed = buildEmbed(info, geo, ip, event);
+    return fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'Oyun Log', embeds: [embed] })
+    }).then(function(r){
+      if (!r.ok){
+        return r.text().then(function(t){
+          console.error('Discord hata:', r.status, t);
+          res.status(500).json({ ok: false, status: r.status });
+        });
+      }
+      res.json({ ok: true });
+    });
+  }).catch(function(e){
+    console.error(e);
+    res.status(500).json({ ok: false, error: String(e) });
+  });
+});
+
+app.get('/test', function(req, res){
+  fetch(WEBHOOK_URL, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: '✅ Test - Render calisiyor!' })
+  })
+  .then(function(r){ res.send('Test gonderildi: ' + r.status); })
+  .catch(function(e){ res.status(500).send('Hata: ' + e.message); });
+});
+
+app.listen(PORT, function(){
+  console.log('✅ Sunucu ' + PORT + ' portunda calisiyor');
+  console.log('📁 Skor dosyasi: ' + SCORES_FILE);
+  console.log('📊 Yuklenen skor: ' + SCORES.length);
+});
